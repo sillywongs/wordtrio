@@ -1,42 +1,43 @@
 # WordTrio
 
-Three daily word puzzles in one static web app. No build step, no server, no dependencies.
+A static daily word-puzzle site built with HTML, CSS and JavaScript.
 
-| Mode | Style | Rules |
-|---|---|---|
-| Word | Wordle | Guess a 5-letter word in 6 tries. Green = right spot, yellow = wrong spot, grey = absent. |
-| Groups | Connections | Sort 16 words into 4 hidden groups. 4 mistakes allowed. "One away" hint. |
-| Pyramid | Pyralinks | 7-node tree. Upper word + lower word must make one compound word (FIRE + WORK). Drag or tap to swap. Tap a line to mark it orange; marked words move as a group. Green links persist. 4 guesses. |
+## Modes
 
-## Run
-Open `index.html` in a browser, or serve the folder: `python3 -m http.server`.
+| Mode | Rules |
+|---|---|
+| Word | Guess a five-letter answer in six tries. |
+| Groups | Sort 16 words into four hidden groups. Four mistakes allowed. |
+| Pyramid | Arrange seven words in a compound-word tree. Tap or drag to swap; orange marks move linked groups. |
+| Circuit | Arrange nine words in a ring. The last two letters of each word must match the first two of the next. Tap two words to swap them, then press Check loop. |
+
+## Links
+
+- `#wordle`
+- `#conn`
+- `#pyra`
+- `#circuit`
+
+## Run locally
+
+Open `index.html`, or run `python3 -m http.server` in the folder.
 
 ## Test
-`node test.js` (Node 16+). 30 tests, plus `node smoke.js` for the Pyramid screen cover scoring, duplicate letters, date and streak maths, scrambling, share text and data integrity.
 
-## How daily puzzles work
-`Core.dayIndex()` counts local days since 2026-01-01. Each mode picks `list[dayIndex % list.length]`, so every player sees the same puzzle with no backend. The Wordle answer list is shuffled once with a fixed seed so the order is not alphabetical. Board scrambles use the day index as the RNG seed.
+Run `node test.js`. The suite covers the four live modes, Pyramid group movement, Circuit validation, deterministic daily selection, dates, streaks and share text.
 
-## Add content
-Edit `data.js`.
-- `CONNECTIONS`: four groups of four unique words, ordered easy to hard (yellow, green, blue, purple).
-- `PYRA`: seven words in solved order `[root, L, R, LL, LR, RL, RR]`. Every parent+child pair must be valid. Mirrored subtrees also count as solved.
-- `LIST`: 5-letter lowercase words. Set `STRICT = true` in `index.html` and load a full dictionary to reject non-words.
+## Daily puzzles
 
-## Ship to mobile
-- PWA: add a manifest and service worker, then "Add to Home Screen".
-- Native: wrap with Capacitor (`npx cap add android`) and publish through Google Play.
-- Streaks and stats live in `localStorage`. Add a backend only for leaderboards or cross-device sync.
+`Core.dayIndex()` counts local calendar days since 2026-01-01. Every player receives the same puzzle for a given local day. Puzzle content lives in `data.js`.
+
+## Storage
+
+Progress is stored in browser local storage. It survives closing the browser on the same device and browser. Clearing site data removes it. There is no cross-device sync.
+
+## PWA files
+
+Keep `manifest.webmanifest`, `sw.js` and the icon files beside `index.html` for Add to Home Screen support.
 
 ## Known limits
-The starter lists hold about 6 days of Connections and Pyramid puzzles and roughly 200 Wordle words, so puzzles repeat. Writing new puzzles is the main ongoing work.
 
-## Deep links
-`#wordle`, `#conn` and `#pyra` open a specific game. Share text ends with the link for the game just played.
-
-
-## New modes
-- **Circuit:** arrange the words in a loop in a loop. Each word's last two letters must match the next word's first two. Five checks, green links and deterministic daily boards.
-- **Waffle:** solve six five-letter words in six total guesses. The starter version displays six compact Wordle cards and routes each typed guess to the next card. The keyboard is arranged in three rows.
-
-Deep links: `#circuit` and `#waffle`.
+The starter content repeats after four Circuit puzzles and six Connections or Pyramid puzzles. Add more curated content in `data.js` before public launch.

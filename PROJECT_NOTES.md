@@ -1,6 +1,5 @@
 # WordTrio project notes
 Live site: https://sillywongs.github.io/wordtrio/  (GitHub Pages, repo sillywongs/wordtrio, branch main, root)
-Deep links: #wordle  #conn  #pyra  #circuit  #waffle
 
 ## Files
 index.html  UI for all three games, tabs, stats dialog, share, hash routing, PWA tags, service worker registration, Pyramid drag/tap input
@@ -30,9 +29,7 @@ manifest.webmanifest, sw.js, icon-*.png, apple-touch-icon.png   PWA files, uploa
 2026-10-07  PWA add-on
 2026-10-07  Share link, hash routing, Pyramid rewrite (directional, extras, persistent greens)
 2026-10-07  Pyramid: persistent orange marks, marked groups move together, drag and drop with tap fallback, 31 tests
-2026-10-07  Circuit and Waffle added, 35 tests
 
 
 ## New modes
 - Circuit: arrange eight words in a closed ring. The final two letters of each word must equal the first two letters of the next. Five checks; all links show green when correct.
-- Waffle: six independent five-letter answers in a compact board. One keyboard entry fills one card at a time, with six total guesses and normal Wordle feedback. These are deliberately simple starter versions; proper interlocking Waffle geometry can replace them later.

@@ -189,40 +189,6 @@
     return { links, correct: links.filter(Boolean).length, solved: links.every(Boolean) };
   }
 
-  // ---- Waffle ----
-  function waffleEval(guess, answer) { return wordleEval(guess, answer); }
-  function waffleSolved(guesses, answers) { return answers.every((a, i) => guesses[i] === a); }
-  function waffleCheck(guesses, answers) {
-    return answers.map((a, i) => guesses[i] ? waffleEval(guesses[i], a) : []);
-  }
-  function waffleBoard(puzzle, seed) { return shuffle(puzzle.answers, seed); }
-
-  // ---- Waffle (sparse 5x5: rows/cols 0,2,4 only) ----
-  // H = [H0,H2,H4], V = [V0,V2,V4]. The player enters three guesses G0,G2,G4.
-  // Solved when G matches H and the implied columns match V.
-  function waffleSolved(G, puzzle) {
-    if (G.length !== 3) return false;
-    if (!puzzle.H.every((w,i)=>G[i]===w)) return false;
-    // derive columns at 0,2,4
-    const C0 = G[0][0]+G[1][0]+G[2][0];
-    const C2 = G[0][2]+G[1][2]+G[2][2];
-    const C4 = G[0][4]+G[1][4]+G[2][4];
-    return C0===puzzle.V[0] && C2===puzzle.V[2] && C4===puzzle.V[4];
-  }
-  function waffleCheck(G, puzzle) {
-    // returns three rows of five cells with correct/present/absent for display
-    const out=[];
-    for(let r=0;r<3;r++){
-      const row=Array(5).fill('absent');
-      if (G[r]) {
-        // score against H[r]
-        const ev=wordleEval(G[r], puzzle.H[r]);
-        for(let c=0;c<5;c++) row[c]=ev[c];
-      }
-      out.push(row);
-    }
-    return out;
-  }
   // ---- Stats ----
   function updateStats(stats, won, key) {
     const s = Object.assign({ played: 0, wins: 0, streak: 0, best: 0, last: null }, stats);
@@ -252,7 +218,7 @@
       history.map(h => h.map(b => b ? '🟩' : '🟥').join('')).join('\n');
   }
 
-  return { EDGES, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState, waffleSolved, waffleCheck,
-    validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, waffleEval, waffleSolved, waffleCheck, waffleBoard, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
+  return { EDGES, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
+    validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
     pyraScramble, pyraRecord, pyraStatus, validSet, pairKey, markedEdges, groupOf, pyraMove, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });

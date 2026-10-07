@@ -176,17 +176,6 @@ t('circuit: links use the last two and first two letters, including wraparound',
 t('circuit: board is a permutation and deterministic', () => {
   const p=D.CIRCUIT[1]; assert.deepStrictEqual(C.circuitBoard(p,9),C.circuitBoard(p,9)); assert.deepStrictEqual(C.circuitBoard(p,9).sort(),p.words.slice().sort());
 });
-t('waffle: evaluates six answers independently and solves exactly', () => {
-  const p=D.WAFFLE[0], gs=p.answers.slice(); assert(C.waffleSolved(gs,p.answers));
-  assert(!C.waffleSolved(gs.slice(0,5),p.answers)); assert.strictEqual(C.waffleCheck(gs,p.answers).length,6);
-  assert.strictEqual(C.waffleEval('crane','crane').every(x=>x==='correct'),true);
-});
-t('daily modes exist for two years', () => { for(let i=0;i<730;i++){assert(C.pick(D.CIRCUIT,i));assert(C.pick(D.WAFFLE,i));} });
 t('circuit: links are case-insensitive', () => assert(C.circuitLinks(['cargo','gothic','icing','ngoma','mason','onset','etude','dealer','erica'], 2).every(Boolean)));
 t('circuit: manual swap changes the arrangement without mutating input', () => { const a=['a','b']; const b=C.swap(a,0,1); assert.deepStrictEqual(a,['a','b']); assert.deepStrictEqual(b,['b','a']); });
-t('waffle: sparse 5x5 solved check', () => {
-  const p=D.WAFFLE[0];
-  assert(C.waffleSolved(p.H,p));
-  const bad=['XXXXX','YYYYY','ZZZZZ']; assert(!C.waffleSolved(bad,p));
-});
 console.log('\n' + n + ' tests passed');

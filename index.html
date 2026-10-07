@@ -38,7 +38,7 @@ dialog{background:#222;color:#fff;border:1px solid #555;border-radius:12px;max-w
 pre{white-space:pre-wrap}
 </style></head><body>
 <header><h1>WordTrio</h1><button class="btn" id="statsBtn">Stats</button></header>
-<nav><button data-g="wordle" class="on">Word</button><button data-g="conn">Groups</button><button data-g="pyra">Pyramid</button><button data-g="waffle">Waffle</button><button data-g="circuit">Circuit</button><button data-g="waffle">Waffle</button></nav>
+<nav><button data-g="wordle" class="on">Word</button><button data-g="conn">Groups</button><button data-g="pyra">Pyramid</button><button data-g="circuit">Circuit</button></nav>
 <main><div id="msg"></div><div id="game"></div></main>
 <dialog id="dlg"><div id="dlgBody"></div><div class="actions"><button class="btn" id="share">Share</button><button class="btn" id="close">Close</button></div></dialog>
 <script src="core.js"></script><script src="data.js"></script>
@@ -92,7 +92,7 @@ function wkey(k) {
   else if (/^[a-z]$/i.test(k) && W.cur.length < 5) W.cur += k.toLowerCase();
   store.set('wordle', W); renderWordle();
 }
-document.addEventListener('keydown', e => { if (!e.ctrlKey && !e.metaKey && current === 'wordle') wkey(e.key); else if (!e.ctrlKey && !e.metaKey && current === 'waffle') waffleKey(e.key); else if (!e.ctrlKey && !e.metaKey && current === 'waffle') waffleKey(e.key); });
+document.addEventListener('keydown', e => { if (!e.ctrlKey && !e.metaKey && current === 'wordle') wkey(e.key); });
 
 // ---------- Connections ----------
 let K;
@@ -225,32 +225,6 @@ function renderPyra() {
   };
 }
 
-// ---------- Waffle (sparse 5x5) ----------
-let WAFF;
-function renderWaffle() {
-  const p=Core.pick(Data.WAFFLE,idx); WAFF=day('waffle',{guesses:[],cur:'',over:false,won:false});
-  let h='<p class="game-help"><b>How Waffle works:</b> fill the three highlighted rows (1, 3 and 5) with five-letter words. Only those rows and the first, third and fifth columns count. After three guesses, every highlighted row and column is scored. Green means the letter is correct in that row or column, yellow means it belongs elsewhere.</p><div class="waffle-board">';
-  for(let r=0;r<5;r++){
-    h+='<div class="w-row">';
-    for(let c=0;c<5;c++){
-      const highlight = (r%2===0 && c%2===0);
-      let ch='', cls='';
-      if(highlight){
-        const rr=r/2|0;
-        if(WAFF.guesses[rr]) ch=WAFF.guesses[rr][c]||'';
-        else if(WAFF.guesses.length===rr && WAFF.cur[c]) ch=WAFF.cur[c];
-      }
-      h+=`<div class="w-cell ${highlight?'':'dim'}">${ch}</div>`;
-    }
-    h+='</div>';
-  }
-  h+='</div><div class="waffle-key">';
-  [['q','w','e','r','t','y','u','i','o','p'],['a','s','d','f','g','h','j','k','l'],['Enter','z','x','c','v','b','n','m','Backspace']].forEach(row=>{h+='<div class="key-row">'+row.map(k=>`<button class="key ${k.length>1?'wide':''}" data-wk="${k}">${k==='Backspace'?'⌫':k}</button>`).join('')+'</div>';});
-  h+='</div><p class="game-help">You have three guesses total. Fill rows 1, 3 and 5, then the game checks those rows and columns 1, 3 and 5.</p>';
-  $('#game').innerHTML=h;document.querySelectorAll('[data-wk]').forEach(b=>b.onclick=()=>waffleKey(b.dataset.wk));
-}
-function waffleKey(k){if(WAFF.over)return;if(k==='Enter'){if(WAFF.cur.length!==5)return say('Use five letters');if(WAFF.guesses.length>=3)return;WAFF.guesses.push(WAFF.cur.toUpperCase());WAFF.cur='';const p=Core.pick(Data.WAFFLE,idx);if(WAFF.guesses.length===3){WAFF.over=true;WAFF.won=Core.waffleSolved(WAFF.guesses,p);say(WAFF.won?'Waffle solved':'Not solved');}store.set('waffle',WAFF);renderWaffle();if(WAFF.over)finish('waffle',WAFF,WAFF.won);}else if(k==='Backspace')WAFF.cur=WAFF.cur.slice(0,-1);else if(/^[a-z]$/i.test(k)&&WAFF.cur.length<5)WAFF.cur+=k.toUpperCase();store.set('waffle',WAFF);renderWaffle();}
-
 // ---------- Circuit ----------
 let CIRC;
 function renderCircuit() {
@@ -274,22 +248,9 @@ function renderCircuit() {
   $('#ccheck').onclick=()=>{const r=Core.circuitCheck(CIRC.arr,p);CIRC.guesses++;if(r.solved){CIRC.over=CIRC.won=true;say('Circuit closed');}else if(CIRC.guesses>=5){CIRC.over=true;say('The loop was not closed');}else say(r.correct+' of '+CIRC.arr.length+' links correct');store.set('circuit',CIRC);renderCircuit();if(CIRC.over)finish('circuit',CIRC,CIRC.won);};
 }
 
-// ---------- Waffle ----------
-let WAFF;
-function renderWaffle() {
-  const p=Core.pick(Data.WAFFLE,idx); WAFF=day('waffle',{guesses:[],cur:'',over:false,won:false});
-  let h='<div class="waffle">';
-  p.answers.forEach((a,i)=>{const g=WAFF.guesses[i], ev=g?Core.waffleEval(g,a):[];h+=`<div class="mini"><h4>Word ${i+1}</h4><div class="row">${[0,1,2,3,4].map(c=>`<div class="cell ${ev[c]||''}">${g?g[c]:(WAFF.guesses.length===i?(WAFF.cur[c]||''):'')}</div>`).join('')}</div></div>`;});
-  h+='</div><div class="waffle-key"><div class="row">';
-  ['qwertyuiop','asdfghjkl','zxcvbnm'].forEach(r=>{h+='<div class="row">'+[...r].map(k=>`<button class="key" data-wk="${k}">${k}</button>`).join('')+'</div>';});
-  h+='</div></div><p style="text-align:center;color:#aaa">Solve all six words. Each guess is entered into the active card. Six guesses total.</p>';
-  $('#game').innerHTML=h;document.querySelectorAll('[data-wk]').forEach(b=>b.onclick=()=>waffleKey(b.dataset.wk));
-}
-function waffleKey(k){if(WAFF.over)return;if(k==='Enter'){if(WAFF.cur.length!==5)return say('Use five letters');const i=WAFF.guesses.length;if(i>=6)return;WAFF.guesses.push(WAFF.cur);WAFF.cur='';const p=Core.pick(Data.WAFFLE,idx);if(WAFF.guesses.length===6){WAFF.over=true;WAFF.won=Core.waffleSolved(WAFF.guesses,p.answers);say(WAFF.won?'Waffle solved':'Try again');}store.set('waffle',WAFF);renderWaffle();if(WAFF.over)finish('waffle',WAFF,WAFF.won);}else if(k==='Backspace')WAFF.cur=WAFF.cur.slice(0,-1);else if(/^[a-z]$/i.test(k)&&WAFF.cur.length<5)WAFF.cur+=k.toUpperCase();store.set('waffle',WAFF);renderWaffle();}
-
 // ---------- Stats dialog ----------
 function showStats(game, st) {
-  const names = { wordle: 'Word', conn: 'Groups', pyra: 'Pyramid', circuit: 'Circuit', waffle: 'Waffle' };
+  const names = { wordle: 'Word', conn: 'Groups', pyra: 'Pyramid', circuit: 'Circuit' };
   const s = Object.assign({ played: 0, wins: 0, streak: 0, best: 0 }, store.get(game + ':stats', {}));
   $('#dlgBody').innerHTML = `<h3>${names[game]} stats</h3><p>Played ${s.played} · Won ${s.wins} · Streak ${s.streak} · Best ${s.best}</p>` + (st && st.over ? '<pre id="sh"></pre>' : '');
   shareText = '';
@@ -304,7 +265,7 @@ function showStats(game, st) {
   $('#share').style.display = shareText ? '' : 'none';
   $('#dlg').showModal();
 }
-$('#statsBtn').onclick = () => showStats(current, current === 'wordle' ? W : current === 'conn' ? K : current === 'pyra' ? P : current === 'circuit' ? CIRC : WAFF);
+$('#statsBtn').onclick = () => showStats(current, current === 'wordle' ? W : current === 'conn' ? K : current === 'pyra' ? P : CIRC);
 $('#close').onclick = () => $('#dlg').close();
 $('#share').onclick = async () => { try { navigator.share ? await navigator.share({ text: shareText }) : await navigator.clipboard.writeText(shareText); say('Shared'); } catch (e) {} };
 
@@ -312,10 +273,10 @@ function show(g) {
   current = g;
   history.replaceState(null, '', '#' + g);
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.g === g));
-  ({ wordle: renderWordle, conn: renderConn, pyra: renderPyra, circuit: renderCircuit, waffle: renderWaffle })[g]();
+  ({ wordle: renderWordle, conn: renderConn, pyra: renderPyra, circuit: renderCircuit })[g]();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.g));
 const startTab = location.hash.slice(1);
-show(['wordle', 'conn', 'pyra', 'circuit', 'waffle'].includes(startTab) ? startTab : 'wordle');
+show(['wordle', 'conn', 'pyra', 'circuit'].includes(startTab) ? startTab : 'wordle');
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 </script></body></html>
