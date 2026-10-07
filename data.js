@@ -61,5 +61,22 @@
     { hint: 'Parent word first, then child', nodes: ['HOT','DOG','SPOT','HOUSE','FIGHT','LIGHT','CHECK'], extra: ['HOT|HOUSE', 'LIGHT|HOUSE'] },
     { hint: 'Parent word first, then child', nodes: ['SAND','PAPER','BOX','WEIGHT','CLIP','CAR','OFFICE'], extra: ['PAPER|BOX'] }
   ];
-  return { LIST, CONNECTIONS, PYRA };
+
+
+  // Each Circuit puzzle is a closed loop. Words are deliberately chosen with repeated 2-letter joins.
+  const CIRCUIT = [
+    { overlap: 2, words: ['CARGO','GOTHIC','ICING','NGOMA','MASON','ONSET','ETUDE','DEALER','ERICA'] },
+    { overlap: 2, words: ['BRAIN','INLET','ETUDE','DEBUT','UTTER','TERMS','MSDOS','DOSSIER'] },
+    { overlap: 2, words: ['CLOUD','ODDLY','LYRIC','ICONS','ONION','ONSET','SETTLE','LEMON'] },
+    { overlap: 2, words: ['TRAIL','ILLICIT','ITSELF','ELFIN','INBOX','OXIDE','DEALER','ERODE'] }
+  ];
+
+  // Waffle answers are six five-letter words. The UI gives each row six guesses and uses normal Wordle scoring.
+  const WAFFLE = [
+    { answers: ['CRANE','SLATE','PILOT','BRAVE','OCEAN','TIGER'] },
+    { answers: ['FLAME','CHAIR','PLANT','STONE','RIVER','CLOUD'] },
+    { answers: ['SMILE','MANGO','LEMON','PEACH','GRAPE','BREAD'] },
+    { answers: ['TRAIN','PLANE','TRUCK','HORSE','SHEEP','ZEBRA'] }
+  ];
+  return { LIST, CONNECTIONS, PYRA, CIRCUIT, WAFFLE };
 });

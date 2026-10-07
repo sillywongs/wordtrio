@@ -175,6 +175,27 @@
   }
   function swap(arr, i, j) { const a = arr.slice(); [a[i], a[j]] = [a[j], a[i]]; return a; }
 
+
+
+  // ---- Circuit ----
+  function circuitLinks(arr, overlap) {
+    const k = overlap || 2;
+    return arr.map((word, i) => word.slice(-k) === arr[(i + 1) % arr.length].slice(0, k));
+  }
+  const circuitSolved = (arr, puzzle) => circuitLinks(arr, puzzle.overlap).every(Boolean);
+  function circuitBoard(puzzle, seed) { return shuffle(puzzle.words, seed); }
+  function circuitCheck(arr, puzzle) {
+    const links = circuitLinks(arr, puzzle.overlap);
+    return { links, correct: links.filter(Boolean).length, solved: links.every(Boolean) };
+  }
+
+  // ---- Waffle ----
+  function waffleEval(guess, answer) { return wordleEval(guess, answer); }
+  function waffleSolved(guesses, answers) { return answers.every((a, i) => guesses[i] === a); }
+  function waffleCheck(guesses, answers) {
+    return answers.map((a, i) => guesses[i] ? waffleEval(guesses[i], a) : []);
+  }
+  function waffleBoard(puzzle, seed) { return shuffle(puzzle.answers, seed); }
   // ---- Stats ----
   function updateStats(stats, won, key) {
     const s = Object.assign({ played: 0, wins: 0, streak: 0, best: 0, last: null }, stats);
@@ -205,6 +226,6 @@
   }
 
   return { EDGES, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
-    validWordleGuess, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
+    validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, waffleEval, waffleSolved, waffleCheck, waffleBoard, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
     pyraScramble, pyraRecord, pyraStatus, validSet, pairKey, markedEdges, groupOf, pyraMove, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });

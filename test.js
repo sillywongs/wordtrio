@@ -167,4 +167,19 @@ t('pyramid: marked groups may move between levels', () => {
   assert(r.moved && r.arr[2] === 'WORK');
   assert.deepStrictEqual(C.groupOf(r.arr, M, 2), [2,5,6]);
 });
+
+t('circuit: links use the last two and first two letters, including wraparound', () => {
+  assert(C.circuitLinks(D.CIRCUIT[0].words, 2).every(Boolean));
+  assert.strictEqual(C.circuitSolved(D.CIRCUIT[0].words, D.CIRCUIT[0]), true);
+  assert.strictEqual(C.circuitCheck(C.shuffle(D.CIRCUIT[0].words, 3), D.CIRCUIT[0]).links.length, D.CIRCUIT[0].words.length);
+});
+t('circuit: board is a permutation and deterministic', () => {
+  const p=D.CIRCUIT[1]; assert.deepStrictEqual(C.circuitBoard(p,9),C.circuitBoard(p,9)); assert.deepStrictEqual(C.circuitBoard(p,9).sort(),p.words.slice().sort());
+});
+t('waffle: evaluates six answers independently and solves exactly', () => {
+  const p=D.WAFFLE[0], gs=p.answers.slice(); assert(C.waffleSolved(gs,p.answers));
+  assert(!C.waffleSolved(gs.slice(0,5),p.answers)); assert.strictEqual(C.waffleCheck(gs,p.answers).length,6);
+  assert.strictEqual(C.waffleEval('crane','crane').every(x=>x==='correct'),true);
+});
+t('daily modes exist for two years', () => { for(let i=0;i<730;i++){assert(C.pick(D.CIRCUIT,i));assert(C.pick(D.WAFFLE,i));} });
 console.log('\n' + n + ' tests passed');
