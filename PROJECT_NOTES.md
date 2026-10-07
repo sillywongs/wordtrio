@@ -33,3 +33,5 @@ manifest.webmanifest, sw.js, icon-*.png, apple-touch-icon.png   PWA files, uploa
 
 ## New modes
 - Circuit: arrange eight words in a closed ring. The final two letters of each word must equal the first two letters of the next. Five checks; all links show green when correct.
+
+2026-10-07 Circuit starts neutral until Check loop; Pyramid clears orange marks after solving.

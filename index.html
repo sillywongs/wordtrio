@@ -180,7 +180,7 @@ function renderPyra() {
   P = day('pyra', { arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], tried: [], known: { green: [], red: [] }, over: false, won: false });
   P.known = P.known || { green: [], red: [] }; P.tried = P.tried || [];
   P.marks = (P.marks || []).filter(m => typeof m === 'string');
-  const st = Core.pyraStatus(P.arr, P.known), me = Core.markedEdges(P.arr, P.marks);
+  const st = P.over ? Core.EDGES.map(()=> '') : Core.pyraStatus(P.arr, P.known), me = P.over ? Core.EDGES.map(()=>false) : Core.markedEdges(P.arr, P.marks);
   const selGroup = P.sel === null ? [] : Core.groupOf(P.arr, P.marks, P.sel);
   let s = '<svg viewBox="0 0 340 215">';
   Core.EDGES.forEach(([a, b], i) => {
@@ -217,7 +217,7 @@ function renderPyra() {
     if (P.tried.includes(key)) return say('Already guessed');
     const res = Core.pyraLinks(P.arr, pyraP);
     P.tried.push(key); P.history.push(res); P.known = Core.pyraRecord(P.arr, pyraP, P.known);
-    if (res.every(Boolean)) { P.over = P.won = true; say('Solved'); }
+    if (res.every(Boolean)) { P.over = P.won = true; P.marks = []; P.known = { green: [], red: [] }; say('Solved'); }
     else if (P.history.length >= 4) { P.over = true; P.arr = pyraP.nodes.slice(); say('Out of guesses'); }
     else say(res.filter(Boolean).length + ' of 6 links correct');
     pyraSave();
