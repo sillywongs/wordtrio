@@ -180,7 +180,7 @@
   // ---- Circuit ----
   function circuitLinks(arr, overlap) {
     const k = overlap || 2;
-    return arr.map((word, i) => word.slice(-k) === arr[(i + 1) % arr.length].slice(0, k));
+    return arr.map((word, i) => word.toUpperCase().slice(-k) === arr[(i + 1) % arr.length].toUpperCase().slice(0, k));
   }
   const circuitSolved = (arr, puzzle) => circuitLinks(arr, puzzle.overlap).every(Boolean);
   function circuitBoard(puzzle, seed) { return shuffle(puzzle.words, seed); }

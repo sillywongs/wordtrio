@@ -36,7 +36,7 @@ The starter lists hold about 6 days of Connections and Pyramid puzzles and rough
 
 
 ## New modes
-- **Circuit:** arrange eight words in a loop. Each word's last two letters must match the next word's first two. Five checks, green links and deterministic daily boards.
-- **Waffle:** solve six five-letter words in six total guesses. The starter version displays six compact Wordle cards and routes each typed guess to the next card.
+- **Circuit:** arrange the words in a loop in a loop. Each word's last two letters must match the next word's first two. Five checks, green links and deterministic daily boards.
+- **Waffle:** solve six five-letter words in six total guesses. The starter version displays six compact Wordle cards and routes each typed guess to the next card. The keyboard is arranged in three rows.
 
 Deep links: `#circuit` and `#waffle`.

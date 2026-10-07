@@ -33,7 +33,7 @@ svg .n rect{fill:#3b3b42;stroke:#666;stroke-width:2;rx:8}
 svg .n.sel rect{stroke:#fff;fill:#6d6d78}svg .n.ok rect{stroke:var(--c)}
 svg .n text{fill:#fff;font:700 12px system-ui;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
 svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{stroke:#c0392b}svg line.mark{stroke:#e67e22;stroke-width:5}svg line.mark.bad{stroke-dasharray:7 5}svg line.hit{stroke:transparent;stroke-width:22;cursor:pointer}svg{touch-action:none;user-select:none}svg .n{cursor:grab}svg .n.grp rect{stroke:#e67e22}svg .n.drag{opacity:.85}svg .n.drag rect{stroke:#fff}
-.circuit-wrap{display:flex;justify-content:center;align-items:center;min-height:300px}.circuit{width:310px;height:310px}.cnode{fill:#3b3b42;stroke:#777;stroke-width:2}.cnode.good{fill:var(--c);stroke:var(--c)}.cnode.bad{fill:#6b3b3b;stroke:#c66}.cnode text{fill:#fff;font:700 12px system-ui;text-anchor:middle;dominant-baseline:middle}.cwire{stroke:#666;stroke-width:4}.cwire.good{stroke:var(--c)}.cwire.bad{stroke:#c66}.waffle{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:360px;margin:auto}.mini h4{text-align:center;margin:4px}.mini .row{margin-bottom:3px}.mini .cell{width:30px;height:30px;font-size:15px}.mini button{width:100%;margin-top:5px}.waffle-key{margin-top:12px}
+.circuit-wrap{display:flex;justify-content:center;align-items:center;min-height:300px}.circuit{width:310px;height:310px}.cnode{fill:#3b3b42;stroke:#777;stroke-width:2}.cnode.good{fill:var(--c);stroke:var(--c)}.cnode.bad{fill:#6b3b3b;stroke:#c66}.cnode text{fill:#fff;font:700 12px system-ui;text-anchor:middle;dominant-baseline:middle}.cwire{stroke:#666;stroke-width:4}.cwire.good{stroke:var(--c)}.cwire.bad{stroke:#c66}.waffle{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:360px;margin:auto}.mini h4{text-align:center;margin:4px}.mini .row{margin-bottom:3px}.mini .cell{width:30px;height:30px;font-size:15px}.mini button{width:100%;margin-top:5px}.waffle-key{margin-top:12px}.waffle-key>.row{display:block}.waffle-key>.row>.row{display:flex;gap:4px;margin-bottom:4px}.waffle-key .key{max-width:none;height:45px}
 dialog{background:#222;color:#fff;border:1px solid #555;border-radius:12px;max-width:340px}
 pre{white-space:pre-wrap}
 </style></head><body>
@@ -235,11 +235,16 @@ function renderCircuit() {
   CIRC.arr.forEach((_, i) => { const j=(i+1)%CIRC.arr.length; s += `<line class="cwire ${links[i]?'good':'bad'}" x1="${pos[i][0]}" y1="${pos[i][1]}" x2="${pos[j][0]}" y2="${pos[j][1]}"/>`; });
   CIRC.arr.forEach((w,i) => s += `<g class="cnode ${links[i]?'good':'bad'}"><circle cx="${pos[i][0]}" cy="${pos[i][1]}" r="34"/><text x="${pos[i][0]}" y="${pos[i][1]}">${w}</text></g>`);
   s += '</svg></div>';
-  s += `<p style="text-align:center;color:#aaa">Arrange the words in a loop. The last two letters of each word must match the first two of the next. Green lines are correct.</p><div class="dots">Attempts: ${CIRC.guesses}/5</div>`;
+  s += `<p style="text-align:center;color:#aaa">Arrange the words in a loop. The last two letters of each word must match the first two of the next. Tap two words to swap them. Green lines are correct.</p><div class="dots">Attempts: ${CIRC.guesses}/5</div>`;
   if (!CIRC.over) s += '<div class="actions"><button class="btn" id="cshuffle">Shuffle</button><button class="btn" id="ccheck">Check loop</button></div>';
   $('#game').innerHTML=s;
   if (CIRC.over) return;
   $('#cshuffle').onclick=()=>{CIRC.arr=Core.shuffle(CIRC.arr,Date.now()&65535);store.set('circuit',CIRC);renderCircuit();};
+  let selected = null;
+  $('#game').querySelectorAll('.cnode').forEach((node,i)=>node.addEventListener('click',()=>{
+    if(selected===null){selected=i;node.querySelector('circle').style.stroke='#fff';node.querySelector('circle').style.strokeWidth='4';}
+    else if(selected!==i){CIRC.arr=Core.swap(CIRC.arr,selected,i);selected=null;store.set('circuit',CIRC);renderCircuit();}
+  }));
   $('#ccheck').onclick=()=>{const r=Core.circuitCheck(CIRC.arr,p);CIRC.guesses++;if(r.solved){CIRC.over=CIRC.won=true;say('Circuit closed');}else if(CIRC.guesses>=5){CIRC.over=true;say('The loop was not closed');}else say(r.correct+' of '+CIRC.arr.length+' links correct');store.set('circuit',CIRC);renderCircuit();if(CIRC.over)finish('circuit',CIRC,CIRC.won);};
 }
 

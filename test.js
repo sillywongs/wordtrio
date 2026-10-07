@@ -182,4 +182,6 @@ t('waffle: evaluates six answers independently and solves exactly', () => {
   assert.strictEqual(C.waffleEval('crane','crane').every(x=>x==='correct'),true);
 });
 t('daily modes exist for two years', () => { for(let i=0;i<730;i++){assert(C.pick(D.CIRCUIT,i));assert(C.pick(D.WAFFLE,i));} });
+t('circuit: links are case-insensitive', () => assert(C.circuitLinks(['cargo','gothic','icing','ngoma','mason','onset','etude','dealer','erica'], 2).every(Boolean)));
+t('circuit: manual swap changes the arrangement without mutating input', () => { const a=['a','b']; const b=C.swap(a,0,1); assert.deepStrictEqual(a,['a','b']); assert.deepStrictEqual(b,['b','a']); });
 console.log('\n' + n + ' tests passed');
