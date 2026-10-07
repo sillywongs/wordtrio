@@ -147,32 +147,31 @@
   function perms(a) {
     return a.length < 2 ? [a] : a.flatMap((x, i) => perms(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x, ...p]));
   }
-  // Move the word at `from` onto `to`. A marked group moves as one piece and swaps with a spot of the same
-  // directed shape. A lone word swaps with the word it lands on.
+  // Move a marked group to any level. The dragged word lands on `to`.
+  // The candidate that preserves the most downward tree links wins. A group may cross levels.
   function pyraMove(arr, marks, from, to) {
     if (from === to) return { arr, moved: false };
     const G = groupOf(arr, marks, from);
-    if (G.includes(to)) return { arr, moved: false, error: 'Drop the group on a word outside it' };
     if (G.length === 1) return { arr: swap(arr, from, to), moved: true };
-    const H = groupOf(arr, marks, to), cands = [];
-    if (H.length === G.length && !H.some(h => G.includes(h))) cands.push(H);
-    combos(arr.length, G.length).forEach(T => {
-      if (T.includes(to) && !T.some(t => G.includes(t)) && connected(T)) cands.push(T);
-    });
     const rest = G.filter(g => g !== from);
-    for (const T of cands) {
-      for (const p of perms(T.filter(t => t !== to))) {
-        const f = new Map([[from, to]]);
-        rest.forEach((g, i) => f.set(g, p[i]));
-        const keepsShape = EDGES.every(([a, b]) => !(f.has(a) && f.has(b)) || EDGES.some(([x, y]) => x === f.get(a) && y === f.get(b)));
-        if (keepsShape) {
-          const out = arr.slice();
-          f.forEach((t, g) => { out[t] = arr[g]; out[g] = arr[t]; });
-          return { arr: out, moved: true };
-        }
-      }
-    }
-    return { arr, moved: false, error: 'That group needs a spot with the same shape' };
+    const pool = arr.map((_, i) => i).filter(i => i !== to);
+    const edge = (a, b) => EDGES.some(([x, y]) => x === a && y === b);
+    const permsOf = a => a.length < 2 ? [a] : a.flatMap((x, i) => permsOf(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x, ...p]));
+    let best = null;
+    permsOf(pool).forEach(p => {
+      const f = new Map([[from, to]]);
+      rest.forEach((g, i) => f.set(g, p[i]));
+      const kept = EDGES.filter(([a, b]) => f.has(a) && f.has(b) && edge(f.get(a), f.get(b))).length;
+      const distance = G.reduce((sum, g) => sum + Math.abs(f.get(g) - g), 0);
+      if (!best || kept > best.kept || (kept === best.kept && distance < best.distance)) best = { f, kept, distance };
+    });
+    const out = arr.slice();
+    const destinations = G.map(g => best.f.get(g));
+    const displaced = destinations.filter(d => !G.includes(d)).sort((a, b) => a - b);
+    const vacancies = G.filter(g => !destinations.includes(g)).sort((a, b) => a - b);
+    G.forEach(g => { out[best.f.get(g)] = arr[g]; });
+    displaced.forEach((d, i) => { out[vacancies[i]] = arr[d]; });
+    return { arr: out, moved: true, note: best.kept < EDGES.filter(([a, b]) => G.includes(a) && G.includes(b)).length ? 'Group moved, but its links now cross levels' : '' };
   }
   function swap(arr, i, j) { const a = arr.slice(); [a[i], a[j]] = [a[j], a[i]]; return a; }
 

@@ -116,12 +116,10 @@ t('pyramid move: dragging any member of the group moves the whole group', () => 
   assert(r.moved, r.error);
   assert.strictEqual(r.arr[5], 'SHOP');
   assert.deepStrictEqual(C.groupOf(r.arr, M, 5).map(i => r.arr[i]).sort(), ['BOOK', 'SHOP', 'WORK']);
-  assert(!C.pyraMove(n, M, 3, 2).moved);
 });
-t('pyramid move: refuses a spot with a different shape and leaves the board alone', () => {
+t('pyramid move: group can move to a different shape and reports it', () => {
   const n = D.PYRA[0].nodes, r = C.pyraMove(n, M, 1, 0);
-  assert(!r.moved && r.error); assert.deepStrictEqual(r.arr, n);
-  assert(!C.pyraMove(n, M, 1, 3).moved);
+  assert(r.moved); assert.deepStrictEqual(r.arr.slice().sort(), n.slice().sort());
 });
 t('pyramid move: two marked groups swap with each other', () => {
   const n = D.PYRA[0].nodes, M2 = M.concat(['FLY|PAPER', 'FLY|WHEEL']);
@@ -158,5 +156,15 @@ t('share text formats', () => {
 });
 t('every day for 2 years yields a puzzle for each mode', () => {
   for (let i = 0; i < 730; i++) { assert(C.pick(D.LIST, i)); assert(C.pick(D.CONNECTIONS, i)); assert(C.pick(D.PYRA, i)); }
+});
+
+t('pyramid: marked groups may move between levels', () => {
+  const p = D.PYRA[0], M = ['WORK|SHOP', 'WORK|BOOK'];
+  let r = C.pyraMove(p.nodes, M, 1, 0);
+  assert(r.moved && r.arr[0] === 'WORK');
+  assert.deepStrictEqual(C.groupOf(r.arr, M, 0), [0,1,2]);
+  r = C.pyraMove(r.arr, M, 0, 2);
+  assert(r.moved && r.arr[2] === 'WORK');
+  assert.deepStrictEqual(C.groupOf(r.arr, M, 2), [2,5,6]);
 });
 console.log('\n' + n + ' tests passed');

@@ -6,7 +6,7 @@ Deep links: #wordle  #conn  #pyra
 index.html  UI for all three games, tabs, stats dialog, share, hash routing, PWA tags, service worker registration, Pyramid drag/tap input
 core.js     Pure logic: scoring, seeded shuffle, date/streak maths, Pyramid link checks, marks, groups and moves, share text
 data.js     Word list (153), 6 Connections puzzles, 6 Pyramid puzzles (each with 'extra' valid compounds)
-test.js     30 node tests: `node test.js`
+test.js     31 node tests: `node test.js`
 smoke.js    Fake-DOM run of the Pyramid screen (marks, drag, tap): `node smoke.js`
 manifest.webmanifest, sw.js, icon-*.png, apple-touch-icon.png   PWA files, uploaded separately (cache name wordtrio-v1)
 
@@ -29,4 +29,4 @@ manifest.webmanifest, sw.js, icon-*.png, apple-touch-icon.png   PWA files, uploa
 2026-10-07  v1 three games, tests
 2026-10-07  PWA add-on
 2026-10-07  Share link, hash routing, Pyramid rewrite (directional, extras, persistent greens)
-2026-10-07  Pyramid: persistent orange marks, marked groups move together, drag and drop with tap fallback, 30 tests
+2026-10-07  Pyramid: persistent orange marks, marked groups move together, drag and drop with tap fallback, 31 tests

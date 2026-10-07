@@ -169,7 +169,7 @@ function setupPyraInput(svg) {
     if (!drag) return;
     const d = drag; drag = null;
     if (!d.moved) return tapNode(d.i);
-    const r = rect(), t = nodeAt((e.clientX - r.left) * 340 / r.width, (e.clientY - r.top) * 215 / r.height, d.group);
+    const r = rect(), t = nodeAt((e.clientX - r.left) * 340 / r.width, (e.clientY - r.top) * 215 / r.height, [d.i]);
     if (t < 0) return renderPyra();
     applyMove(d.i, t);
   });
@@ -198,7 +198,7 @@ function renderPyra() {
     const n = pyraP.nodes;
     s += '<p style="text-align:center;color:#aaa">' + Core.EDGES.map(([a, b]) => n[a] + n[b]).join(' · ') + '</p>';
   } else {
-    s += '<p style="text-align:center;color:#aaa">Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group, onto a spot of the same shape. Green links stay green while those two words stay together.</p>';
+    s += '<p style="text-align:center;color:#aaa">Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group, onto a any level. Green links stay green while those two words stay together.</p>';
   }
   s += `<div class="dots">Guesses left: ${'● '.repeat(4 - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
   if (!P.over) s += '<div class="actions"><button class="btn" id="pg">Submit guess</button></div>';
