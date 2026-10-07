@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>WordTrio – daily word puzzles</title>
+<style>
+:root{--bg:#121214;--fg:#f2f2f2;--tile:#2b2b30;--c:#538d4e;--p:#b59f3b;--a:#3a3a3c;--y:#f9df6d;--g:#a0c35a;--b:#b0c4ef;--pu:#ba81c5}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh}
+header{width:100%;max-width:480px;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #333}
+h1{font-size:20px;margin:0}
+nav{display:flex;gap:6px;padding:8px}
+nav button,.btn{background:var(--tile);color:var(--fg);border:0;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer}
+nav button.on{background:#4a6fa5}
+main{width:100%;max-width:480px;padding:10px 14px}
+#msg{min-height:24px;text-align:center;font-weight:600;margin:4px 0}
+.row{display:flex;gap:5px;justify-content:center;margin-bottom:5px}
+.cell{width:56px;height:56px;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;text-transform:uppercase}
+.cell.correct{background:var(--c);border-color:var(--c)}.cell.present{background:var(--p);border-color:var(--p)}.cell.absent{background:var(--a);border-color:var(--a)}
+.kb{margin-top:14px}.kb .row{gap:4px}
+.key{flex:1;max-width:42px;height:52px;border:0;border-radius:6px;background:#818384;color:#fff;font-weight:700;text-transform:uppercase;cursor:pointer}
+.key.wide{max-width:64px;font-size:12px}.key.correct{background:var(--c)}.key.present{background:var(--p)}.key.absent{background:var(--a)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{background:#3b3b42;border:0;color:var(--fg);border-radius:8px;min-height:64px;font-weight:700;font-size:clamp(10px,3.4vw,15px);padding:4px;word-break:break-word;cursor:pointer}
+.tile.sel{background:#6d6d78;outline:2px solid #fff}
+.solved{border-radius:8px;padding:10px;text-align:center;margin-bottom:6px;color:#111;font-weight:700}
+.solved small{display:block;font-weight:500}
+.g0{background:var(--y)}.g1{background:var(--g)}.g2{background:var(--b)}.g3{background:var(--pu)}
+.dots{text-align:center;margin:8px 0;letter-spacing:4px}
+.actions{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+svg{width:100%;max-width:340px;display:block;margin:0 auto}
+svg .n rect{fill:#3b3b42;stroke:#666;stroke-width:2;rx:8}
+svg .n.sel rect{stroke:#fff;fill:#6d6d78}svg .n.ok rect{stroke:var(--c)}
+svg .n text{fill:#fff;font:700 12px system-ui;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{stroke:#c0392b}svg line.mark{stroke:#e67e22}
+dialog{background:#222;color:#fff;border:1px solid #555;border-radius:12px;max-width:340px}
+pre{white-space:pre-wrap}
+</style></head><body>
+<header><h1>WordTrio</h1><button class="btn" id="statsBtn">Stats</button></header>
+<nav><button data-g="wordle" class="on">Word</button><button data-g="conn">Groups</button><button data-g="pyra">Pyramid</button></nav>
+<main><div id="msg"></div><div id="game"></div></main>
+<dialog id="dlg"><div id="dlgBody"></div><div class="actions"><button class="btn" id="share">Share</button><button class="btn" id="close">Close</button></div></dialog>
+<script src="core.js"></script><script src="data.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const STRICT = false; // true: only accept guesses from Data.LIST. Swap in a full dictionary to use this.
+const today = Core.dateKey(), idx = Core.dayIndex();
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('wt:' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { localStorage.setItem('wt:' + k, JSON.stringify(v)); } };
+const ANSWERS = Core.shuffle(Data.LIST, 20260101);
+const answer = Core.pick(ANSWERS, idx);
+const connP = Core.pick(Data.CONNECTIONS, idx), pyraP = Core.pick(Data.PYRA, idx);
+let current = 'wordle', shareText = '';
+const say = t => { $('#msg').textContent = t; if (t) setTimeout(() => { if ($('#msg').textContent === t) $('#msg').textContent = ''; }, 2200); };
+function day(game, init) { const s = store.get(game, null); return s && s.date === today ? s : Object.assign({ date: today }, init); }
+function finish(game, st, won) {
+  store.set(game + ':stats', Core.updateStats(store.get(game + ':stats', null), won, today));
+  setTimeout(() => showStats(game, st), 900);
+}
+
+// ---------- Wordle ----------
+let W;
+function renderWordle() {
+  W = day('wordle', { guesses: [], cur: '', over: false, won: false });
+  let h = '';
+  for (let r = 0; r < 6; r++) {
+    h += '<div class="row">';
+    const g = W.guesses[r], ev = g && Core.wordleEval(g, answer);
+    for (let c = 0; c < 5; c++) {
+      const ch = g ? g[c] : (r === W.guesses.length ? (W.cur[c] || '') : '');
+      h += `<div class="cell ${ev ? ev[c] : ''}">${ch}</div>`;
+    }
+    h += '</div>';
+  }
+  const ks = Core.keyboardState(W.guesses, answer);
+  const rows = ['qwertyuiop', 'asdfghjkl', '+zxcvbnm-'];
+  h += '<div class="kb">' + rows.map(r => '<div class="row">' + [...r].map(k => k === '+' ? '<button class="key wide" data-k="Enter">Enter</button>' : k === '-' ? '<button class="key wide" data-k="Backspace">Del</button>' : `<button class="key ${ks[k] || ''}" data-k="${k}">${k}</button>`).join('') + '</div>').join('') + '</div>';
+  $('#game').innerHTML = h;
+  document.querySelectorAll('.key').forEach(b => b.onclick = () => wkey(b.dataset.k));
+}
+function wkey(k) {
+  if (current !== 'wordle' || W.over) return;
+  if (k === 'Enter') {
+    if (W.cur.length < 5) return say('Not enough letters');
+    if (!Core.validWordleGuess(W.cur, Data.LIST, STRICT)) return say('Not in word list');
+    W.guesses.push(W.cur); W.cur = '';
+    if (W.guesses[W.guesses.length - 1] === answer) { W.over = W.won = true; say('Brilliant'); }
+    else if (W.guesses.length === 6) { W.over = true; say(answer.toUpperCase()); }
+    store.set('wordle', W); renderWordle();
+    if (W.over) finish('wordle', W, W.won);
+  } else if (k === 'Backspace') W.cur = W.cur.slice(0, -1);
+  else if (/^[a-z]$/i.test(k) && W.cur.length < 5) W.cur += k.toLowerCase();
+  store.set('wordle', W); renderWordle();
+}
+document.addEventListener('keydown', e => { if (!e.ctrlKey && !e.metaKey && current === 'wordle') wkey(e.key); });
+
+// ---------- Connections ----------
+let K;
+function renderConn() {
+  K = day('conn', { board: Core.connectionsBoard(connP, idx), sel: [], solved: [], mistakes: 0, history: [], over: false, won: false });
+  let h = K.solved.map(g => `<div class="solved g${g}">${connP.groups[g].name}<small>${connP.groups[g].words.join(', ')}</small></div>`).join('');
+  const left = K.board.filter(w => !K.solved.some(g => connP.groups[g].words.includes(w)));
+  h += '<div class="grid">' + left.map(w => `<button class="tile ${K.sel.includes(w) ? 'sel' : ''}" data-w="${w}">${w}</button>`).join('') + '</div>';
+  h += `<div class="dots">Mistakes left: ${'● '.repeat(4 - K.mistakes)}${'○ '.repeat(K.mistakes)}</div>`;
+  if (!K.over) h += '<div class="actions"><button class="btn" id="cs">Shuffle</button><button class="btn" id="cd">Deselect</button><button class="btn" id="cu">Submit</button></div>';
+  $('#game').innerHTML = h;
+  document.querySelectorAll('.tile').forEach(b => b.onclick = () => {
+    if (K.over) return; const w = b.dataset.w;
+    K.sel = K.sel.includes(w) ? K.sel.filter(x => x !== w) : (K.sel.length < 4 ? [...K.sel, w] : K.sel);
+    store.set('conn', K); renderConn();
+  });
+  if (!K.over) {
+    $('#cs').onclick = () => { K.board = Core.shuffle(K.board, Date.now() & 0xffff); store.set('conn', K); renderConn(); };
+    $('#cd').onclick = () => { K.sel = []; store.set('conn', K); renderConn(); };
+    $('#cu').onclick = () => {
+      if (K.sel.length !== 4) return say('Pick four words');
+      if (K.history.some(h => h.slice().sort().join() === K.sel.slice().sort().join())) return say('Already guessed');
+      const r = Core.connectionsCheck(K.sel, connP); K.history.push(K.sel.slice());
+      if (r.result === 'correct') { K.solved.push(r.group); }
+      else { K.mistakes++; say(r.result === 'one-away' ? 'One away…' : 'Not a group'); }
+      K.sel = [];
+      if (K.solved.length === 4) K.over = K.won = true;
+      else if (K.mistakes >= 4) { K.over = true; connP.groups.forEach((g, i) => { if (!K.solved.includes(i)) K.solved.push(i); }); }
+      store.set('conn', K); renderConn();
+      if (K.over) finish('conn', K, K.won);
+    };
+  }
+}
+
+// ---------- Pyramid ----------
+const POS = [[170,30],[95,105],[245,105],[55,180],[135,180],[205,180],[285,180]];
+let P;
+function renderPyra() {
+  P = day('pyra', { arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], last: null, over: false, won: false });
+  let s = '<svg viewBox="0 0 340 215">';
+  Core.EDGES.forEach(([a, b], i) => {
+    const cls = P.last ? (P.last[i] ? 'good' : 'bad') : (P.marks.includes(i) ? 'mark' : '');
+    s += `<line class="${cls}" data-e="${i}" x1="${POS[a][0]}" y1="${POS[a][1]}" x2="${POS[b][0]}" y2="${POS[b][1]}"/>`;
+  });
+  P.arr.forEach((w, i) => {
+    const ok = P.last && Core.EDGES.every(([a, b], e) => (a !== i && b !== i) || P.last[e]);
+    s += `<g class="n ${P.sel === i ? 'sel' : ''} ${ok ? 'ok' : ''}" data-i="${i}"><rect x="${POS[i][0] - 33}" y="${POS[i][1] - 16}" width="66" height="32"/><text x="${POS[i][0]}" y="${POS[i][1]}">${w}</text></g>`;
+  });
+  s += '</svg>';
+  s += `<p style="text-align:center;color:#aaa">${pyraP.hint}: every linked pair makes a word or phrase. Tap two words to swap. Tap a line to mark it.</p>`;
+  s += `<div class="dots">Guesses left: ${'● '.repeat(4 - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
+  if (!P.over) s += '<div class="actions"><button class="btn" id="pg">Submit guess</button></div>';
+  $('#game').innerHTML = s;
+  if (P.over) return;
+  document.querySelectorAll('.n').forEach(g => g.onclick = () => {
+    const i = +g.dataset.i;
+    if (P.sel === null) P.sel = i; else if (P.sel === i) P.sel = null;
+    else { P.arr = Core.swap(P.arr, P.sel, i); P.sel = null; P.last = null; P.marks = []; }
+    store.set('pyra', P); renderPyra();
+  });
+  document.querySelectorAll('svg line').forEach(l => l.onclick = () => {
+    const e = +l.dataset.e; P.marks = P.marks.includes(e) ? P.marks.filter(x => x !== e) : [...P.marks, e];
+    store.set('pyra', P); renderPyra();
+  });
+  $('#pg').onclick = () => {
+    P.last = Core.pyraLinks(P.arr, pyraP); P.history.push(P.last);
+    if (P.last.every(Boolean)) { P.over = P.won = true; say('Solved'); }
+    else if (P.history.length >= 4) { P.over = true; P.arr = pyraP.nodes.slice(); P.last = Core.pyraLinks(P.arr, pyraP); }
+    else say(P.last.filter(Boolean).length + ' of 6 links correct');
+    store.set('pyra', P); renderPyra();
+    if (P.over) finish('pyra', P, P.won);
+  };
+}
+
+// ---------- Stats dialog ----------
+function showStats(game, st) {
+  const names = { wordle: 'Word', conn: 'Groups', pyra: 'Pyramid' };
+  const s = Object.assign({ played: 0, wins: 0, streak: 0, best: 0 }, store.get(game + ':stats', {}));
+  $('#dlgBody').innerHTML = `<h3>${names[game]} stats</h3><p>Played ${s.played} · Won ${s.wins} · Streak ${s.streak} · Best ${s.best}</p>` + (st && st.over ? '<pre id="sh"></pre>' : '');
+  shareText = '';
+  if (st && st.over) {
+    shareText = game === 'wordle' ? Core.shareWordle(st.guesses, answer, today, st.won)
+      : game === 'conn' ? Core.shareConnections(st.history, connP, today)
+      : Core.sharePyra(st.history, today, st.won);
+    $('#sh').textContent = shareText;
+  }
+  $('#share').style.display = shareText ? '' : 'none';
+  $('#dlg').showModal();
+}
+$('#statsBtn').onclick = () => showStats(current, current === 'wordle' ? W : current === 'conn' ? K : P);
+$('#close').onclick = () => $('#dlg').close();
+$('#share').onclick = async () => { try { navigator.share ? await navigator.share({ text: shareText }) : await navigator.clipboard.writeText(shareText); say('Shared'); } catch (e) {} };
+
+function show(g) {
+  current = g;
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.g === g));
+  ({ wordle: renderWordle, conn: renderConn, pyra: renderPyra })[g]();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.g));
+show('wordle');
+</script></body></html>
