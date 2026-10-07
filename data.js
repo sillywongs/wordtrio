@@ -63,12 +63,230 @@
   ];
 
 
-  // Each Circuit puzzle is a closed loop. Words are deliberately chosen with repeated 2-letter joins.
+  // Circuit puzzles. Every loop is checked by test.js and validate-circuit.js.
+  // 'solution' is one valid ring. Any arrangement where each word's last two letters equal the next word's
+  // first two letters (last word back to the first) also wins.
   const CIRCUIT = [
-    { overlap: 2, words: ['CARGO','GOTHIC','ICING','NGOMA','MASON','ONSET','ETUDE','DEALER','ERICA'] },
-    { overlap: 2, words: ['BRAIN','INLET','ETUDE','DEBUT','UTTER','TERMS','MSDOS','DOSSIER'] },
-    { overlap: 2, words: ['CLOUD','ODDLY','LYRIC','ICONS','ONION','ONSET','SETTLE','LEMON'] },
-    { overlap: 2, words: ['TRAIL','ILLICIT','ITSELF','ELFIN','INBOX','OXIDE','DEALER','ERODE'] }
+    {
+      "id": "loop-01",
+      "overlap": 2,
+      "words": [
+        "APPLE",
+        "CHEST",
+        "EXIST",
+        "INDEX",
+        "LEAST",
+        "REACH",
+        "RESIN",
+        "STARE",
+        "STORE",
+        "STRAP"
+      ],
+      "solution": [
+        "STRAP",
+        "APPLE",
+        "LEAST",
+        "STARE",
+        "REACH",
+        "CHEST",
+        "STORE",
+        "RESIN",
+        "INDEX",
+        "EXIST"
+      ]
+    },
+    {
+      "id": "loop-02",
+      "overlap": 2,
+      "words": [
+        "CHASE",
+        "CHEST",
+        "RANCH",
+        "REACH",
+        "SEIZE",
+        "SENSE",
+        "SERVE",
+        "STORE",
+        "VERSE",
+        "ZEBRA"
+      ],
+      "solution": [
+        "VERSE",
+        "SENSE",
+        "SEIZE",
+        "ZEBRA",
+        "RANCH",
+        "CHEST",
+        "STORE",
+        "REACH",
+        "CHASE",
+        "SERVE"
+      ]
+    },
+    {
+      "id": "loop-03",
+      "overlap": 2,
+      "words": [
+        "ANNEX",
+        "CHEST",
+        "ERROR",
+        "EXIST",
+        "LEAST",
+        "ORGAN",
+        "STATE",
+        "STEER",
+        "STYLE",
+        "TEACH"
+      ],
+      "solution": [
+        "CHEST",
+        "STEER",
+        "ERROR",
+        "ORGAN",
+        "ANNEX",
+        "EXIST",
+        "STYLE",
+        "LEAST",
+        "STATE",
+        "TEACH"
+      ]
+    },
+    {
+      "id": "loop-04",
+      "overlap": 2,
+      "words": [
+        "ANKLE",
+        "ERROR",
+        "LEASE",
+        "ORGAN",
+        "RAISE",
+        "SEIZE",
+        "SENSE",
+        "SETUP",
+        "UPPER",
+        "ZEBRA"
+      ],
+      "solution": [
+        "ZEBRA",
+        "RAISE",
+        "SETUP",
+        "UPPER",
+        "ERROR",
+        "ORGAN",
+        "ANKLE",
+        "LEASE",
+        "SENSE",
+        "SEIZE"
+      ]
+    },
+    {
+      "id": "loop-05",
+      "overlap": 2,
+      "words": [
+        "ANNEX",
+        "ENTER",
+        "ERROR",
+        "EXTRA",
+        "ORGAN",
+        "RAISE",
+        "SENSE",
+        "SERVE",
+        "SEVEN",
+        "VERSE"
+      ],
+      "solution": [
+        "VERSE",
+        "SEVEN",
+        "ENTER",
+        "ERROR",
+        "ORGAN",
+        "ANNEX",
+        "EXTRA",
+        "RAISE",
+        "SENSE",
+        "SERVE"
+      ]
+    },
+    {
+      "id": "loop-06",
+      "overlap": 2,
+      "words": [
+        "CHAIN",
+        "ELITE",
+        "EXIST",
+        "INDEX",
+        "REACH",
+        "REBEL",
+        "STARE",
+        "TENTH",
+        "THERE"
+      ],
+      "solution": [
+        "REBEL",
+        "ELITE",
+        "TENTH",
+        "THERE",
+        "REACH",
+        "CHAIN",
+        "INDEX",
+        "EXIST",
+        "STARE"
+      ]
+    },
+    {
+      "id": "loop-07",
+      "overlap": 2,
+      "words": [
+        "ARENA",
+        "CHAIN",
+        "EXTRA",
+        "INDEX",
+        "NAIVE",
+        "RADAR",
+        "RANCH",
+        "SEIZE",
+        "VERSE",
+        "ZEBRA"
+      ],
+      "solution": [
+        "RADAR",
+        "ARENA",
+        "NAIVE",
+        "VERSE",
+        "SEIZE",
+        "ZEBRA",
+        "RANCH",
+        "CHAIN",
+        "INDEX",
+        "EXTRA"
+      ]
+    },
+    {
+      "id": "loop-08",
+      "overlap": 2,
+      "words": [
+        "APPLE",
+        "CYCLE",
+        "ELITE",
+        "LEAST",
+        "LEVEL",
+        "MERCY",
+        "STRAP",
+        "TENTH",
+        "THEME"
+      ],
+      "solution": [
+        "APPLE",
+        "LEVEL",
+        "ELITE",
+        "TENTH",
+        "THEME",
+        "MERCY",
+        "CYCLE",
+        "LEAST",
+        "STRAP"
+      ]
+    }
   ];
 
   return { LIST, CONNECTIONS, PYRA, CIRCUIT };

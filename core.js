@@ -183,7 +183,21 @@
     return arr.map((word, i) => word.toUpperCase().slice(-k) === arr[(i + 1) % arr.length].toUpperCase().slice(0, k));
   }
   const circuitSolved = (arr, puzzle) => circuitLinks(arr, puzzle.overlap).every(Boolean);
-  function circuitBoard(puzzle, seed) { return shuffle(puzzle.words, seed); }
+  function circuitBoard(puzzle, seed) {
+  let s = seed, arr = shuffle(puzzle.words, s), tries = 0;
+  while ((circuitSolved(arr, puzzle) || circuitLinks(arr, puzzle.overlap).filter(Boolean).length > 1) && tries++ < 500) arr = shuffle(puzzle.words, ++s);
+  return arr;
+}
+function circuitCycleCount(words, overlap) {
+  const k = overlap || 2, n = words.length;
+  const nxt = words.map((w, i) => words.map((x, j) => j !== i && w.slice(-k) === x.slice(0, k) ? j : -1).filter(j => j >= 0));
+  let count = 0;
+  (function walk(path, used) {
+    if (path.length === n) { if (nxt[path[n - 1]].includes(0)) count++; return; }
+    nxt[path[path.length - 1]].forEach(j => { if (!(used >> j & 1)) walk(path.concat(j), used | (1 << j)); });
+  })([0], 1);
+  return count;
+}
   function circuitCheck(arr, puzzle) {
     const links = circuitLinks(arr, puzzle.overlap);
     return { links, correct: links.filter(Boolean).length, solved: links.every(Boolean) };
@@ -219,6 +233,6 @@
   }
 
   return { EDGES, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
-    validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
+    validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, circuitCycleCount, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
     pyraScramble, pyraRecord, pyraStatus, validSet, pairKey, markedEdges, groupOf, pyraMove, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });
