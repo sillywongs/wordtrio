@@ -51,13 +51,16 @@
   ];
 
   // Each puzzle: 7 words in solved tree order [root, L, R, LL, LR, RL, RR]. Every parent+child forms a compound or phrase.
+  // Each puzzle: 7 words in solved tree order [root, L, R, LL, LR, RL, RR].
+  // A link reads downward: upper word + lower word = one compound word (FIRE + WORK = FIREWORK).
+  // 'extra' lists other real compounds that use only words in the puzzle, so valid alternatives are never rejected.
   const PYRA = [
-    { hint: 'Compound words', nodes: ['FIRE','WORK','FLY','SHOP','BOOK','PAPER','WHEEL'] },
-    { hint: 'Compound words', nodes: ['SUN','FLOWER','LIGHT','POT','BED','HOUSE','BULB'] },
-    { hint: 'Compound words', nodes: ['BLACK','BIRD','BOARD','SONG','CAGE','WALK','ROOM'] },
-    { hint: 'Compound words', nodes: ['RAIN','COAT','DROP','RACK','TAIL','OUT','KICK'] },
-    { hint: 'Compound words', nodes: ['HOT','DOG','SPOT','HOUSE','FIGHT','LIGHT','CHECK'] },
-    { hint: 'Compound words', nodes: ['SAND','PAPER','BOX','WEIGHT','CLIP','CAR','OFFICE'] }
+    { hint: 'Parent word first, then child', nodes: ['FIRE','WORK','FLY','SHOP','BOOK','PAPER','WHEEL'], extra: ['PAPER|WORK', 'BOOK|SHOP', 'BOOK|WORK'] },
+    { hint: 'Parent word first, then child', nodes: ['SUN','FLOWER','LIGHT','POT','BED','HOUSE','BULB'], extra: ['FLOWER|BULB', 'SUN|BED'] },
+    { hint: 'Parent word first, then child', nodes: ['BLACK','BIRD','BOARD','SONG','CAGE','WALK','ROOM'], extra: ['SONG|BIRD'] },
+    { hint: 'Parent word first, then child', nodes: ['RAIN','COAT','DROP','RACK','TAIL','OUT','KICK'], extra: ['RAIN|OUT', 'TAIL|COAT'] },
+    { hint: 'Parent word first, then child', nodes: ['HOT','DOG','SPOT','HOUSE','FIGHT','LIGHT','CHECK'], extra: ['HOT|HOUSE', 'LIGHT|HOUSE'] },
+    { hint: 'Parent word first, then child', nodes: ['SAND','PAPER','BOX','WEIGHT','CLIP','CAR','OFFICE'], extra: ['PAPER|BOX'] }
   ];
   return { LIST, CONNECTIONS, PYRA };
 });

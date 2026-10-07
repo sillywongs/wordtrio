@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#121214"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="WordTrio">
 <title>WordTrio – daily word puzzles</title>
 <style>
 :root{--bg:#121214;--fg:#f2f2f2;--tile:#2b2b30;--c:#538d4e;--p:#b59f3b;--a:#3a3a3c;--y:#f9df6d;--g:#a0c35a;--b:#b0c4ef;--pu:#ba81c5}
@@ -129,18 +130,25 @@ function renderConn() {
 const POS = [[170,30],[95,105],[245,105],[55,180],[135,180],[205,180],[285,180]];
 let P;
 function renderPyra() {
-  P = day('pyra', { arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], last: null, over: false, won: false });
+  P = day('pyra', { arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], tried: [], known: { green: [], red: [] }, over: false, won: false });
+  P.known = P.known || { green: [], red: [] }; P.tried = P.tried || []; P.marks = P.marks || [];
+  const st = Core.pyraStatus(P.arr, P.known);
   let s = '<svg viewBox="0 0 340 215">';
   Core.EDGES.forEach(([a, b], i) => {
-    const cls = P.last ? (P.last[i] ? 'good' : 'bad') : (P.marks.includes(i) ? 'mark' : '');
+    const cls = st[i] || (P.marks.includes(i) ? 'mark' : '');
     s += `<line class="${cls}" data-e="${i}" x1="${POS[a][0]}" y1="${POS[a][1]}" x2="${POS[b][0]}" y2="${POS[b][1]}"/>`;
   });
   P.arr.forEach((w, i) => {
-    const ok = P.last && Core.EDGES.every(([a, b], e) => (a !== i && b !== i) || P.last[e]);
+    const ok = Core.EDGES.every(([a, b], e) => (a !== i && b !== i) || st[e] === 'good');
     s += `<g class="n ${P.sel === i ? 'sel' : ''} ${ok ? 'ok' : ''}" data-i="${i}"><rect x="${POS[i][0] - 33}" y="${POS[i][1] - 16}" width="66" height="32"/><text x="${POS[i][0]}" y="${POS[i][1]}">${w}</text></g>`;
   });
   s += '</svg>';
-  s += `<p style="text-align:center;color:#aaa">${pyraP.hint}: every linked pair makes a word or phrase. Tap two words to swap. Tap a line to mark it.</p>`;
+  if (P.over) {
+    const n = pyraP.nodes;
+    s += '<p style="text-align:center;color:#aaa">' + Core.EDGES.map(([a, b]) => n[a] + n[b]).join(' · ') + '</p>';
+  } else {
+    s += '<p style="text-align:center;color:#aaa">Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Tap two words to swap them. Green links stay green while those two words stay together. Tap a line to mark it.</p>';
+  }
   s += `<div class="dots">Guesses left: ${'● '.repeat(4 - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
   if (!P.over) s += '<div class="actions"><button class="btn" id="pg">Submit guess</button></div>';
   $('#game').innerHTML = s;
@@ -148,7 +156,7 @@ function renderPyra() {
   document.querySelectorAll('.n').forEach(g => g.onclick = () => {
     const i = +g.dataset.i;
     if (P.sel === null) P.sel = i; else if (P.sel === i) P.sel = null;
-    else { P.arr = Core.swap(P.arr, P.sel, i); P.sel = null; P.last = null; P.marks = []; }
+    else { P.arr = Core.swap(P.arr, P.sel, i); P.sel = null; P.marks = []; }
     store.set('pyra', P); renderPyra();
   });
   document.querySelectorAll('svg line').forEach(l => l.onclick = () => {
@@ -156,10 +164,14 @@ function renderPyra() {
     store.set('pyra', P); renderPyra();
   });
   $('#pg').onclick = () => {
-    P.last = Core.pyraLinks(P.arr, pyraP); P.history.push(P.last);
-    if (P.last.every(Boolean)) { P.over = P.won = true; say('Solved'); }
-    else if (P.history.length >= 4) { P.over = true; P.arr = pyraP.nodes.slice(); P.last = Core.pyraLinks(P.arr, pyraP); }
-    else say(P.last.filter(Boolean).length + ' of 6 links correct');
+    const key = P.arr.join();
+    if (P.tried.includes(key)) return say('Already guessed');
+    const res = Core.pyraLinks(P.arr, pyraP);
+    P.tried.push(key); P.history.push(res); P.known = Core.pyraRecord(P.arr, pyraP, P.known);
+    if (res.every(Boolean)) { P.over = P.won = true; say('Solved'); }
+    else if (P.history.length >= 4) { P.over = true; P.arr = pyraP.nodes.slice(); say('Out of guesses'); }
+    else say(res.filter(Boolean).length + ' of 6 links correct');
+    P.marks = [];
     store.set('pyra', P); renderPyra();
     if (P.over) finish('pyra', P, P.won);
   };
@@ -175,6 +187,7 @@ function showStats(game, st) {
     shareText = game === 'wordle' ? Core.shareWordle(st.guesses, answer, today, st.won)
       : game === 'conn' ? Core.shareConnections(st.history, connP, today)
       : Core.sharePyra(st.history, today, st.won);
+    shareText += '\nhttps://sillywongs.github.io/wordtrio/#' + game;
     $('#sh').textContent = shareText;
   }
   $('#share').style.display = shareText ? '' : 'none';
@@ -186,9 +199,12 @@ $('#share').onclick = async () => { try { navigator.share ? await navigator.shar
 
 function show(g) {
   current = g;
+  history.replaceState(null, '', '#' + g);
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.g === g));
   ({ wordle: renderWordle, conn: renderConn, pyra: renderPyra })[g]();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.g));
-show('wordle');
+const startTab = location.hash.slice(1);
+show(['wordle', 'conn', 'pyra'].includes(startTab) ? startTab : 'wordle');
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 </script></body></html>

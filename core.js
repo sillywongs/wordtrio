@@ -85,16 +85,37 @@
   }
 
   // ---- Pyralinks ----
-  const pairKey = (a, b) => [a, b].sort().join('|');
+  // Links are directional: the upper word comes first, so parent + child must make a word (FIRE + WORK).
+  const pairKey = (a, b) => a + '|' + b;
+  function validSet(puzzle) {
+    const s = new Set(EDGES.map(([a, b]) => pairKey(puzzle.nodes[a], puzzle.nodes[b])));
+    (puzzle.extra || []).forEach(e => s.add(e));
+    return s;
+  }
   function pyraLinks(arr, puzzle) {
-    const ok = new Set(EDGES.map(([a, b]) => pairKey(puzzle.nodes[a], puzzle.nodes[b])));
+    const ok = validSet(puzzle);
     return EDGES.map(([a, b]) => ok.has(pairKey(arr[a], arr[b])));
   }
   const pyraSolved = (arr, p) => pyraLinks(arr, p).every(Boolean);
   function pyraScramble(puzzle, seed) {
     let s = seed, arr;
-    do { arr = shuffle(puzzle.nodes, s++); } while (pyraSolved(arr, puzzle) || pyraLinks(arr, puzzle).filter(Boolean).length > 2);
+    do { arr = shuffle(puzzle.nodes, s++); } while (pyraSolved(arr, puzzle) || pyraLinks(arr, puzzle).filter(Boolean).length > 1);
     return arr;
+  }
+  // Knowledge survives swaps: a verified pair stays green for as long as the same two words stay linked.
+  function pyraRecord(arr, puzzle, known) {
+    const k = { green: (known && known.green || []).slice(), red: (known && known.red || []).slice() };
+    const res = pyraLinks(arr, puzzle);
+    EDGES.forEach(([a, b], i) => {
+      const key = pairKey(arr[a], arr[b]);
+      const list = res[i] ? k.green : k.red;
+      if (!list.includes(key)) list.push(key);
+    });
+    return k;
+  }
+  function pyraStatus(arr, known) {
+    const g = (known && known.green) || [], r = (known && known.red) || [];
+    return EDGES.map(([a, b]) => { const key = pairKey(arr[a], arr[b]); return g.includes(key) ? 'good' : r.includes(key) ? 'bad' : ''; });
   }
   function swap(arr, i, j) { const a = arr.slice(); [a[i], a[j]] = [a[j], a[i]]; return a; }
 
@@ -129,5 +150,5 @@
 
   return { EDGES, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
     validWordleGuess, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
-    pyraScramble, swap, updateStats, shareWordle, shareConnections, sharePyra };
+    pyraScramble, pyraRecord, pyraStatus, validSet, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });
