@@ -178,5 +178,6 @@ t('circuit: board is a permutation and deterministic', () => {
 });
 t('circuit: links are case-insensitive', () => assert(C.circuitLinks(['cargo','gothic','icing','ngoma','mason','onset','etude','dealer','erica'], 2).every(Boolean)));
 t('circuit: manual swap changes the arrangement without mutating input', () => { const a=['a','b']; const b=C.swap(a,0,1); assert.deepStrictEqual(a,['a','b']); assert.deepStrictEqual(b,['b','a']); });
-t('circuit: starts visually neutral at UI level', () => { assert(C.circuitCheck(D.CIRCUIT[0].words,D.CIRCUIT[0]).solved); assert(C.circuitLinks(D.CIRCUIT[0].words,2).every(Boolean)); });
+t('all Circuit daily payloads are valid closed loops', () => { D.CIRCUIT.forEach((p,i)=>{ assert(C.circuitSolved(p.words,p), 'Circuit '+i); assert(C.circuitLinks(p.words,p.overlap).every(Boolean)); }); });
+t('Circuit scrambled board has no automatic feedback state', () => { const p=D.CIRCUIT[0], b=C.circuitBoard(p,279); assert.strictEqual(C.circuitCheck(b,p).links.length,b.length); });
 console.log('\n' + n + ' tests passed');

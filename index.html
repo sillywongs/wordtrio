@@ -36,7 +36,7 @@ svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{s
 .circuit-wrap{max-width:460px;margin:8px auto 0;padding:0 8px}.circuit{width:100%;height:auto;display:block}.cnode circle{fill:#303038;stroke:#777;stroke-width:2}.cnode.good circle{fill:#2f7d42;stroke:#69c27a;stroke-width:3}.cnode.bad circle{fill:#303038;stroke:#777;stroke-width:2}.cnode.selected circle{stroke:#fff;stroke-width:5}.cnode text{fill:#fff !important;font:700 13px system-ui;text-anchor:middle;dominant-baseline:middle}.cwire{stroke:#555;stroke-width:4}.cwire.good{stroke:#55b96b;stroke-width:6}.cwire.bad{stroke:#555}.waffle{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:360px;margin:auto}.mini h4{text-align:center;margin:4px}.mini .row{margin-bottom:3px}.mini .cell{width:30px;height:30px;font-size:15px}.mini button{width:100%;margin-top:5px}.waffle-key{margin-top:12px}.waffle-key>.row{display:block}.waffle-key>.row>.row{display:flex;gap:4px;margin-bottom:4px}.waffle-key .key{max-width:none;height:45px}
 dialog{background:#222;color:#fff;border:1px solid #555;border-radius:12px;max-width:340px}
 pre{white-space:pre-wrap}
-</style></head><body>
+.circuit-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:430px;margin:14px auto}.ctile{min-height:56px;background:#303038;color:#fff;border:2px solid #5c5c65;border-radius:10px;padding:7px 5px;font:700 14px system-ui;cursor:pointer}.ctile small{display:block;color:#bdbdc5;font-size:10px;margin-top:3px;font-weight:500}.ctile.selected{border-color:#fff;box-shadow:0 0 0 2px #fff4}.ctile.good{background:#2f7d42;border-color:#69c27a}.ctile.wrong{background:#3a3032;border-color:#8e555a}.ctile.good small,.ctile.wrong small{color:#eee}@media(max-width:360px){.ctile{font-size:12px}}</style></head><body>
 <header><h1>WordTrio</h1><button class="btn" id="statsBtn">Stats</button></header>
 <nav><button data-g="wordle" class="on">Word</button><button data-g="conn">Groups</button><button data-g="pyra">Pyramid</button><button data-g="circuit">Circuit</button></nav>
 <main><div id="msg"></div><div id="game"></div></main>
@@ -179,8 +179,9 @@ function setupPyraInput(svg) {
 function renderPyra() {
   P = day('pyra', { arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], tried: [], known: { green: [], red: [] }, over: false, won: false });
   P.known = P.known || { green: [], red: [] }; P.tried = P.tried || [];
+  if (P.over && P.won) { P.marks = []; P.known = { green: [], red: [] }; }
   P.marks = (P.marks || []).filter(m => typeof m === 'string');
-  const st = P.over ? Core.EDGES.map(()=> '') : Core.pyraStatus(P.arr, P.known), me = P.over ? Core.EDGES.map(()=>false) : Core.markedEdges(P.arr, P.marks);
+  const st = Core.pyraStatus(P.arr, P.known), me = Core.markedEdges(P.arr, P.marks);
   const selGroup = P.sel === null ? [] : Core.groupOf(P.arr, P.marks, P.sel);
   let s = '<svg viewBox="0 0 340 215">';
   Core.EDGES.forEach(([a, b], i) => {
@@ -217,7 +218,7 @@ function renderPyra() {
     if (P.tried.includes(key)) return say('Already guessed');
     const res = Core.pyraLinks(P.arr, pyraP);
     P.tried.push(key); P.history.push(res); P.known = Core.pyraRecord(P.arr, pyraP, P.known);
-    if (res.every(Boolean)) { P.over = P.won = true; P.marks = []; P.known = { green: [], red: [] }; say('Solved'); }
+    if (res.every(Boolean)) { P.over = P.won = true; say('Solved'); }
     else if (P.history.length >= 4) { P.over = true; P.arr = pyraP.nodes.slice(); say('Out of guesses'); }
     else say(res.filter(Boolean).length + ' of 6 links correct');
     pyraSave();
@@ -228,24 +229,26 @@ function renderPyra() {
 // ---------- Circuit ----------
 let CIRC;
 function renderCircuit() {
-  CIRC = day('circuit', { arr: Core.circuitBoard(Core.pick(Data.CIRCUIT, idx), idx), marks: [], guesses: 0, over: false, won: false });
-  const p = Core.pick(Data.CIRCUIT, idx), links = Core.circuitLinks(CIRC.arr, p.overlap);
-  let s = '<div class="circuit-wrap"><svg class="circuit" viewBox="0 0 310 310">';
-  const pos = CIRC.arr.map((_, i) => { const a = -Math.PI/2 + i * 2*Math.PI/CIRC.arr.length; return [155 + 108*Math.cos(a), 155 + 108*Math.sin(a)]; });
-  CIRC.arr.forEach((_, i) => { const j=(i+1)%CIRC.arr.length; s += `<line class="cwire ${links[i]?'good':'bad'}" x1="${pos[i][0]}" y1="${pos[i][1]}" x2="${pos[j][0]}" y2="${pos[j][1]}"/>`; });
-  CIRC.arr.forEach((w,i) => s += `<g class="cnode ${links[i]?'good':'bad'}"><circle cx="${pos[i][0]}" cy="${pos[i][1]}" r="34"/><text x="${pos[i][0]}" y="${pos[i][1]}">${w}</text></g>`);
-  s += '</svg></div>';
-  s += `<p style="text-align:center;color:#aaa">Arrange the words in a loop. The last two letters of each word must match the first two of the next. Tap two words to swap them. Green lines are correct.</p><div class="dots">Attempts: ${CIRC.guesses}/5</div>`;
-  if (!CIRC.over) s += '<div class="actions"><button class="btn" id="cshuffle">Shuffle</button><button class="btn" id="ccheck">Check loop</button></div>';
-  $('#game').innerHTML=s;
+  const p = Core.pick(Data.CIRCUIT, idx);
+  CIRC = day('circuit', { arr: Core.circuitBoard(p, idx), guesses: 0, feedback: null, over: false, won: false });
+  if (!Array.isArray(CIRC.arr) || CIRC.arr.length !== p.words.length) CIRC.arr = Core.circuitBoard(p, idx);
+  // A previous build persisted automatic feedback. Ignore it unless this build explicitly stored a feedback result.
+  const links = Array.isArray(CIRC.feedback) && CIRC.feedback.length === CIRC.arr.length ? CIRC.feedback : CIRC.arr.map(() => null);
+  let h = '<p class="game-help"><b>How to play:</b> tap two tiles to swap them. Each word must end with the same two letters that begin the next word. The last tile must link back to the first. Press Check loop to reveal feedback.</p>';
+  h += '<div class="circuit-list">' + CIRC.arr.map((w,i)=>`<button class="ctile ${links[i]===true?'good':links[i]===false?'wrong':''}" data-ci="${i}"><span>${w}</span><small>${i===CIRC.arr.length-1?'↻ back to first':'→ next'}</small></button>`).join('') + '</div>';
+  h += `<div class="dots">Checks used: ${CIRC.guesses}/5</div>`;
+  if (!CIRC.over) h += '<div class="actions"><button class="btn" id="cshuffle">Shuffle</button><button class="btn" id="ccheck">Check loop</button></div>';
+  $('#game').innerHTML=h;
   if (CIRC.over) return;
-  $('#cshuffle').onclick=()=>{CIRC.arr=Core.shuffle(CIRC.arr,Date.now()&65535);store.set('circuit',CIRC);renderCircuit();};
   let selected = null;
-  $('#game').querySelectorAll('.cnode').forEach((node,i)=>node.addEventListener('click',()=>{
-    if(selected===null){selected=i;node.querySelector('circle').style.stroke='#fff';node.querySelector('circle').style.strokeWidth='4';}
-    else if(selected!==i){CIRC.arr=Core.swap(CIRC.arr,selected,i);selected=null;store.set('circuit',CIRC);renderCircuit();}
-  }));
-  $('#ccheck').onclick=()=>{const r=Core.circuitCheck(CIRC.arr,p);CIRC.checked=true;CIRC.guesses++;if(r.solved){CIRC.over=CIRC.won=true;say('Circuit closed');}else if(CIRC.guesses>=5){CIRC.over=true;say('The loop was not closed');}else say(r.correct+' of '+CIRC.arr.length+' links correct');store.set('circuit',CIRC);renderCircuit();if(CIRC.over)finish('circuit',CIRC,CIRC.won);};
+  document.querySelectorAll('[data-ci]').forEach(node=>node.onclick=()=>{
+    const i=+node.dataset.ci;
+    if(selected===null){ selected=i; node.classList.add('selected'); }
+    else if(selected===i){ selected=null; node.classList.remove('selected'); }
+    else { CIRC.arr=Core.swap(CIRC.arr,selected,i); CIRC.feedback=null; selected=null; store.set('circuit',CIRC); renderCircuit(); }
+  });
+  $('#cshuffle').onclick=()=>{CIRC.arr=Core.shuffle(CIRC.arr,Date.now()&65535);CIRC.feedback=null;store.set('circuit',CIRC);renderCircuit();};
+  $('#ccheck').onclick=()=>{const r=Core.circuitCheck(CIRC.arr,p);CIRC.feedback=r.links;CIRC.guesses++;if(r.solved){CIRC.over=CIRC.won=true;say('Circuit closed');}else if(CIRC.guesses>=5){CIRC.over=true;say('The loop was not closed');}else say(r.correct+' of '+CIRC.arr.length+' links correct');store.set('circuit',CIRC);renderCircuit();if(CIRC.over)finish('circuit',CIRC,CIRC.won);};
 }
 
 // ---------- Stats dialog ----------
