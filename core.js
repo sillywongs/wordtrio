@@ -89,7 +89,7 @@
   const pairKey = (a, b) => a + '|' + b;
   function validSet(puzzle) {
     const s = new Set(EDGES.map(([a, b]) => pairKey(puzzle.nodes[a], puzzle.nodes[b])));
-    (puzzle.extra || []).forEach(e => s.add(e));
+    (puzzle.extra || []).forEach(x => s.add(x));
     return s;
   }
   function pyraLinks(arr, puzzle) {
@@ -102,7 +102,7 @@
     do { arr = shuffle(puzzle.nodes, s++); } while (pyraSolved(arr, puzzle) || pyraLinks(arr, puzzle).filter(Boolean).length > 1);
     return arr;
   }
-  // Knowledge survives swaps: a verified pair stays green for as long as the same two words stay linked.
+  // Verified knowledge survives swaps: a pair stays green or red for as long as the same two words stay linked.
   function pyraRecord(arr, puzzle, known) {
     const k = { green: (known && known.green || []).slice(), red: (known && known.red || []).slice() };
     const res = pyraLinks(arr, puzzle);
@@ -116,6 +116,63 @@
   function pyraStatus(arr, known) {
     const g = (known && known.green) || [], r = (known && known.red) || [];
     return EDGES.map(([a, b]) => { const key = pairKey(arr[a], arr[b]); return g.includes(key) ? 'good' : r.includes(key) ? 'bad' : ''; });
+  }
+
+  // ---- Pyramid marks and groups ----
+  // Marks are word pairs ("UPPER|LOWER"), so they stay put when other words are swapped elsewhere.
+  const markedEdges = (arr, marks) => EDGES.map(([a, b]) => (marks || []).includes(pairKey(arr[a], arr[b])));
+  function groupOf(arr, marks, i) {
+    const me = markedEdges(arr, marks), g = [i];
+    let grew = true;
+    while (grew) {
+      grew = false;
+      EDGES.forEach(([a, b], e) => {
+        if (me[e] && g.includes(a) !== g.includes(b)) { g.push(g.includes(a) ? b : a); grew = true; }
+      });
+    }
+    return g.sort((x, y) => x - y);
+  }
+  const adjacent = (a, b) => EDGES.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+  function connected(set) {
+    const seen = [set[0]], stack = [set[0]];
+    while (stack.length) { const c = stack.pop(); set.forEach(n => { if (!seen.includes(n) && adjacent(c, n)) { seen.push(n); stack.push(n); } }); }
+    return seen.length === set.length;
+  }
+  function combos(n, k, from = 0) {
+    if (k === 0) return [[]];
+    const out = [];
+    for (let i = from; i <= n - k; i++) combos(n, k - 1, i + 1).forEach(r => out.push([i, ...r]));
+    return out;
+  }
+  function perms(a) {
+    return a.length < 2 ? [a] : a.flatMap((x, i) => perms(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x, ...p]));
+  }
+  // Move the word at `from` onto `to`. A marked group moves as one piece and swaps with a spot of the same
+  // directed shape. A lone word swaps with the word it lands on.
+  function pyraMove(arr, marks, from, to) {
+    if (from === to) return { arr, moved: false };
+    const G = groupOf(arr, marks, from);
+    if (G.includes(to)) return { arr, moved: false, error: 'Drop the group on a word outside it' };
+    if (G.length === 1) return { arr: swap(arr, from, to), moved: true };
+    const H = groupOf(arr, marks, to), cands = [];
+    if (H.length === G.length && !H.some(h => G.includes(h))) cands.push(H);
+    combos(arr.length, G.length).forEach(T => {
+      if (T.includes(to) && !T.some(t => G.includes(t)) && connected(T)) cands.push(T);
+    });
+    const rest = G.filter(g => g !== from);
+    for (const T of cands) {
+      for (const p of perms(T.filter(t => t !== to))) {
+        const f = new Map([[from, to]]);
+        rest.forEach((g, i) => f.set(g, p[i]));
+        const keepsShape = EDGES.every(([a, b]) => !(f.has(a) && f.has(b)) || EDGES.some(([x, y]) => x === f.get(a) && y === f.get(b)));
+        if (keepsShape) {
+          const out = arr.slice();
+          f.forEach((t, g) => { out[t] = arr[g]; out[g] = arr[t]; });
+          return { arr: out, moved: true };
+        }
+      }
+    }
+    return { arr, moved: false, error: 'That group needs a spot with the same shape' };
   }
   function swap(arr, i, j) { const a = arr.slice(); [a[i], a[j]] = [a[j], a[i]]; return a; }
 
@@ -150,5 +207,5 @@
 
   return { EDGES, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
     validWordleGuess, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
-    pyraScramble, pyraRecord, pyraStatus, validSet, swap, updateStats, shareWordle, shareConnections, sharePyra };
+    pyraScramble, pyraRecord, pyraStatus, validSet, pairKey, markedEdges, groupOf, pyraMove, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });

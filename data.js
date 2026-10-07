@@ -50,7 +50,6 @@
       { name: 'Sound like letters', words: ['SEA','TEA','BEE','PEA'] } ] }
   ];
 
-  // Each puzzle: 7 words in solved tree order [root, L, R, LL, LR, RL, RR]. Every parent+child forms a compound or phrase.
   // Each puzzle: 7 words in solved tree order [root, L, R, LL, LR, RL, RR].
   // A link reads downward: upper word + lower word = one compound word (FIRE + WORK = FIREWORK).
   // 'extra' lists other real compounds that use only words in the puzzle, so valid alternatives are never rejected.

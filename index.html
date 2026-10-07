@@ -32,7 +32,7 @@ svg{width:100%;max-width:340px;display:block;margin:0 auto}
 svg .n rect{fill:#3b3b42;stroke:#666;stroke-width:2;rx:8}
 svg .n.sel rect{stroke:#fff;fill:#6d6d78}svg .n.ok rect{stroke:var(--c)}
 svg .n text{fill:#fff;font:700 12px system-ui;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
-svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{stroke:#c0392b}svg line.mark{stroke:#e67e22}
+svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{stroke:#c0392b}svg line.mark{stroke:#e67e22;stroke-width:5}svg line.mark.bad{stroke-dasharray:7 5}svg line.hit{stroke:transparent;stroke-width:22;cursor:pointer}svg{touch-action:none;user-select:none}svg .n{cursor:grab}svg .n.grp rect{stroke:#e67e22}svg .n.drag{opacity:.85}svg .n.drag rect{stroke:#fff}
 dialog{background:#222;color:#fff;border:1px solid #555;border-radius:12px;max-width:340px}
 pre{white-space:pre-wrap}
 </style></head><body>
@@ -129,39 +129,87 @@ function renderConn() {
 // ---------- Pyramid ----------
 const POS = [[170,30],[95,105],[245,105],[55,180],[135,180],[205,180],[285,180]];
 let P;
+function pyraSave() { store.set('pyra', P); renderPyra(); }
+function applyMove(from, to) {
+  const r = Core.pyraMove(P.arr, P.marks, from, to);
+  if (r.error) say(r.error);
+  if (r.moved) P.arr = r.arr;
+  P.sel = null; pyraSave();
+}
+function tapNode(i) {
+  if (P.sel === null) P.sel = i; else if (P.sel === i) P.sel = null; else return applyMove(P.sel, i);
+  pyraSave();
+}
+function setupPyraInput(svg) {
+  let drag = null;
+  const rect = () => svg.getBoundingClientRect();
+  const nodeAt = (x, y, skip) => {
+    let best = -1, bd = 1e9;
+    POS.forEach(([px, py], i) => { if (skip.includes(i)) return; const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = i; } });
+    return bd < 50 ? best : -1;
+  };
+  svg.addEventListener('pointerdown', e => {
+    const n = e.target.closest('.n'); if (!n) return;
+    const i = +n.dataset.i;
+    drag = { i, group: Core.groupOf(P.arr, P.marks, i), sx: e.clientX, sy: e.clientY, moved: false };
+    svg.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+    drag.moved = true;
+    const k = 340 / rect().width;
+    drag.group.forEach(g => {
+      const el = svg.querySelector(`.n[data-i="${g}"]`);
+      el.setAttribute('transform', `translate(${dx * k},${dy * k})`); el.classList.add('drag');
+    });
+  });
+  svg.addEventListener('pointerup', e => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (!d.moved) return tapNode(d.i);
+    const r = rect(), t = nodeAt((e.clientX - r.left) * 340 / r.width, (e.clientY - r.top) * 215 / r.height, d.group);
+    if (t < 0) return renderPyra();
+    applyMove(d.i, t);
+  });
+  svg.addEventListener('pointercancel', () => { drag = null; renderPyra(); });
+}
 function renderPyra() {
   P = day('pyra', { arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], tried: [], known: { green: [], red: [] }, over: false, won: false });
-  P.known = P.known || { green: [], red: [] }; P.tried = P.tried || []; P.marks = P.marks || [];
-  const st = Core.pyraStatus(P.arr, P.known);
+  P.known = P.known || { green: [], red: [] }; P.tried = P.tried || [];
+  P.marks = (P.marks || []).filter(m => typeof m === 'string');
+  const st = Core.pyraStatus(P.arr, P.known), me = Core.markedEdges(P.arr, P.marks);
+  const selGroup = P.sel === null ? [] : Core.groupOf(P.arr, P.marks, P.sel);
   let s = '<svg viewBox="0 0 340 215">';
   Core.EDGES.forEach(([a, b], i) => {
-    const cls = st[i] || (P.marks.includes(i) ? 'mark' : '');
-    s += `<line class="${cls}" data-e="${i}" x1="${POS[a][0]}" y1="${POS[a][1]}" x2="${POS[b][0]}" y2="${POS[b][1]}"/>`;
+    const cls = st[i] === 'good' ? 'good' : me[i] ? 'mark ' + st[i] : st[i];
+    const c = `x1="${POS[a][0]}" y1="${POS[a][1]}" x2="${POS[b][0]}" y2="${POS[b][1]}"`;
+    s += `<line class="${cls}" ${c}/>`;
+    if (!P.over) s += `<line class="hit" data-e="${i}" ${c}/>`;
   });
   P.arr.forEach((w, i) => {
     const ok = Core.EDGES.every(([a, b], e) => (a !== i && b !== i) || st[e] === 'good');
-    s += `<g class="n ${P.sel === i ? 'sel' : ''} ${ok ? 'ok' : ''}" data-i="${i}"><rect x="${POS[i][0] - 33}" y="${POS[i][1] - 16}" width="66" height="32"/><text x="${POS[i][0]}" y="${POS[i][1]}">${w}</text></g>`;
+    const grp = Core.groupOf(P.arr, P.marks, i).length > 1;
+    s += `<g class="n ${selGroup.includes(i) ? 'sel' : ''} ${ok ? 'ok' : ''} ${grp ? 'grp' : ''}" data-i="${i}"><rect x="${POS[i][0] - 33}" y="${POS[i][1] - 16}" width="66" height="32"/><text x="${POS[i][0]}" y="${POS[i][1]}">${w}</text></g>`;
   });
   s += '</svg>';
   if (P.over) {
     const n = pyraP.nodes;
     s += '<p style="text-align:center;color:#aaa">' + Core.EDGES.map(([a, b]) => n[a] + n[b]).join(' · ') + '</p>';
   } else {
-    s += '<p style="text-align:center;color:#aaa">Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Tap two words to swap them. Green links stay green while those two words stay together. Tap a line to mark it.</p>';
+    s += '<p style="text-align:center;color:#aaa">Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group, onto a spot of the same shape. Green links stay green while those two words stay together.</p>';
   }
   s += `<div class="dots">Guesses left: ${'● '.repeat(4 - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
   if (!P.over) s += '<div class="actions"><button class="btn" id="pg">Submit guess</button></div>';
   $('#game').innerHTML = s;
   if (P.over) return;
-  document.querySelectorAll('.n').forEach(g => g.onclick = () => {
-    const i = +g.dataset.i;
-    if (P.sel === null) P.sel = i; else if (P.sel === i) P.sel = null;
-    else { P.arr = Core.swap(P.arr, P.sel, i); P.sel = null; P.marks = []; }
-    store.set('pyra', P); renderPyra();
-  });
-  document.querySelectorAll('svg line').forEach(l => l.onclick = () => {
-    const e = +l.dataset.e; P.marks = P.marks.includes(e) ? P.marks.filter(x => x !== e) : [...P.marks, e];
-    store.set('pyra', P); renderPyra();
+  const svg = $('#game').querySelector('svg');
+  if (svg) setupPyraInput(svg);
+  document.querySelectorAll('svg line.hit').forEach(l => l.onclick = () => {
+    const [a, b] = Core.EDGES[+l.dataset.e], key = Core.pairKey(P.arr[a], P.arr[b]);
+    P.marks = P.marks.includes(key) ? P.marks.filter(x => x !== key) : [...P.marks, key];
+    pyraSave();
   });
   $('#pg').onclick = () => {
     const key = P.arr.join();
@@ -171,8 +219,7 @@ function renderPyra() {
     if (res.every(Boolean)) { P.over = P.won = true; say('Solved'); }
     else if (P.history.length >= 4) { P.over = true; P.arr = pyraP.nodes.slice(); say('Out of guesses'); }
     else say(res.filter(Boolean).length + ' of 6 links correct');
-    P.marks = [];
-    store.set('pyra', P); renderPyra();
+    pyraSave();
     if (P.over) finish('pyra', P, P.won);
   };
 }

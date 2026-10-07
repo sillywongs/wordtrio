@@ -6,13 +6,13 @@ Three daily word puzzles in one static web app. No build step, no server, no dep
 |---|---|---|
 | Word | Wordle | Guess a 5-letter word in 6 tries. Green = right spot, yellow = wrong spot, grey = absent. |
 | Groups | Connections | Sort 16 words into 4 hidden groups. 4 mistakes allowed. "One away" hint. |
-| Pyramid | Pyralinks | Swap words in a 7-node tree. Upper word + lower word must make one compound word (FIRE + WORK). 4 guesses. Green links persist between guesses while the same two words stay linked. |
+| Pyramid | Pyralinks | 7-node tree. Upper word + lower word must make one compound word (FIRE + WORK). Drag or tap to swap. Tap a line to mark it orange; marked words move as a group. Green links persist. 4 guesses. |
 
 ## Run
 Open `index.html` in a browser, or serve the folder: `python3 -m http.server`.
 
 ## Test
-`node test.js` (Node 16+). 22 tests cover scoring, duplicate letters, date and streak maths, scrambling, share text and data integrity.
+`node test.js` (Node 16+). 30 tests, plus `node smoke.js` for the Pyramid screen cover scoring, duplicate letters, date and streak maths, scrambling, share text and data integrity.
 
 ## How daily puzzles work
 `Core.dayIndex()` counts local days since 2026-01-01. Each mode picks `list[dayIndex % list.length]`, so every player sees the same puzzle with no backend. The Wordle answer list is shuffled once with a fixed seed so the order is not alphabetical. Board scrambles use the day index as the RNG seed.
