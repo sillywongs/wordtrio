@@ -1,4 +1,3 @@
-
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.Data = factory();
@@ -71,12 +70,10 @@
     { overlap: 2, words: ['TRAIL','ILLICIT','ITSELF','ELFIN','INBOX','OXIDE','DEALER','ERODE'] }
   ];
 
-  // Waffle answers are six five-letter words. The UI gives each row six guesses and uses normal Wordle scoring.
+// Sparse Waffle: only rows/cols 0,2,4 are words. H = [H0,H2,H4], V = [V0,V2,V4].
   const WAFFLE = [
-    { answers: ['CRANE','SLATE','PILOT','BRAVE','OCEAN','TIGER'] },
-    { answers: ['FLAME','CHAIR','PLANT','STONE','RIVER','CLOUD'] },
-    { answers: ['SMILE','MANGO','LEMON','PEACH','GRAPE','BREAD'] },
-    { answers: ['TRAIN','PLANE','TRUCK','HORSE','SHEEP','ZEBRA'] }
+    { H: ['marsh','river','horse'], V: ['marsh','river','horse'] },
+    { H: ['lobby','brave','yield'], V: ['lobby','brave','yield'] }
   ];
   return { LIST, CONNECTIONS, PYRA, CIRCUIT, WAFFLE };
 });
