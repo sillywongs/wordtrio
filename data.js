@@ -50,22 +50,21 @@
       { name: 'Sound like letters', words: ['SEA','TEA','BEE','PEA'] } ] }
   ];
 
-  // Each puzzle: 7 words in solved tree order [root, L, R, LL, LR, RL, RR].
-  // A link reads downward: upper word + lower word = one compound word (FIRE + WORK = FIREWORK).
+  // Each Pyramid puzzle: 15 words in heap order, a full binary tree four layers deep.
+  // nodes[0] is the top word, nodes[1] and nodes[2] its children, nodes[3..6] the next layer, nodes[7..14] the bottom layer.
+  // Node i has children 2i+1 and 2i+2. A link reads downward: upper word + lower word = one compound word (FIRE + WORK = FIREWORK).
   // 'extra' lists other real compounds that use only words in the puzzle, so valid alternatives are never rejected.
   const PYRA = [
-    { hint: 'Parent word first, then child', nodes: ['FIRE','WORK','FLY','SHOP','BOOK','PAPER','WHEEL'], extra: ['PAPER|WORK', 'BOOK|SHOP', 'BOOK|WORK'] },
-    { hint: 'Parent word first, then child', nodes: ['SUN','FLOWER','LIGHT','POT','BED','HOUSE','BULB'], extra: ['FLOWER|BULB', 'SUN|BED'] },
-    { hint: 'Parent word first, then child', nodes: ['BLACK','BIRD','BOARD','SONG','CAGE','WALK','ROOM'], extra: ['SONG|BIRD'] },
-    { hint: 'Parent word first, then child', nodes: ['RAIN','COAT','DROP','RACK','TAIL','OUT','KICK'], extra: ['RAIN|OUT', 'TAIL|COAT'] },
-    { hint: 'Parent word first, then child', nodes: ['HOT','DOG','SPOT','HOUSE','FIGHT','LIGHT','CHECK'], extra: ['HOT|HOUSE', 'LIGHT|HOUSE'] },
-    { hint: 'Parent word first, then child', nodes: ['SAND','PAPER','BOX','WEIGHT','CLIP','CAR','OFFICE'], extra: ['PAPER|BOX'] }
+    { hint: 'Parent word first, then child', nodes: ['FIRE', 'WORK', 'FLY', 'SHOP', 'BOOK', 'PAPER', 'WHEEL', 'KEEPER', 'LIFT', 'MARK', 'WORM', 'CLIP', 'WEIGHT', 'CHAIR', 'BARROW'], extra: ['PAPER|WORK', 'BOOK|SHOP', 'BOOK|WORK', 'BOOK|KEEPER', 'CHAIR|LIFT'] },
+    { hint: 'Parent word first, then child', nodes: ['SUN', 'LIGHT', 'FLOWER', 'HOUSE', 'SHIP', 'POT', 'BED', 'BOAT', 'KEEPER', 'YARD', 'WRECK', 'HOLE', 'LUCK', 'ROOM', 'TIME'], extra: ['BOAT|YARD', 'BOAT|HOUSE', 'SUN|BED', 'SUN|ROOM'] },
+    { hint: 'Parent word first, then child', nodes: ['BLACK', 'BIRD', 'OUT', 'BATH', 'SONG', 'SIDE', 'DOOR', 'TUB', 'ROBE', 'BOOK', 'WRITER', 'WALK', 'SHOW', 'BELL', 'MAT'], extra: ['SONG|BIRD', 'WALK|OUT'] },
+    { hint: 'Parent word first, then child', nodes: ['DAY', 'BREAK', 'TIME', 'WATER', 'OUT', 'TABLE', 'PIECE', 'FALL', 'MELON', 'SIDE', 'LINE', 'CLOTH', 'SPOON', 'WORK', 'MEAL'], extra: ['TIME|OUT', 'FALL|OUT', 'TIME|LINE', 'SIDE|LINE', 'MEAL|TIME', 'WATER|SIDE', 'WATER|LINE', 'WORK|OUT'] },
+    { hint: 'Parent word first, then child', nodes: ['SAND', 'BOX', 'PAPER', 'CAR', 'WOOD', 'BACK', 'WORK', 'PORT', 'POOL', 'LAND', 'PILE', 'PACK', 'YARD', 'SHOP', 'LOAD'], extra: ['WOOD|WORK', 'WOOD|SHOP', 'CAR|LOAD', 'SAND|PILE', 'YARD|WORK'] },
+    { hint: 'Parent word first, then child', nodes: ['WALL', 'PAPER', 'FLOWER', 'WORK', 'BACK', 'POT', 'BED', 'SHOP', 'LOAD', 'PACK', 'YARD', 'HOLE', 'LUCK', 'ROOM', 'TIME'], extra: ['WORK|ROOM', 'BACK|ROOM', 'YARD|WORK'] }
   ];
 
-
-  // Circuit puzzles. Every loop is checked by test.js and validate-circuit.js.
-  // 'solution' is one valid ring. Any arrangement where each word's last two letters equal the next word's
-  // first two letters (last word back to the first) also wins.
+  // Circuit puzzles. Every loop is checked by test.js. 'solution' is one valid ring; any arrangement where each word's
+  // last two letters equal the next word's first two letters (last word back to the first) also wins.
   const CIRCUIT = [
     {
       "id": "loop-01",

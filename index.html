@@ -31,18 +31,41 @@ main{width:100%;max-width:480px;padding:10px 14px}
 svg{width:100%;max-width:340px;display:block;margin:0 auto}
 svg .n rect{fill:#3b3b42;stroke:#666;stroke-width:2;rx:8}
 svg .n.sel rect{stroke:#fff;fill:#6d6d78}svg .n.ok rect{stroke:var(--c)}
-svg .n text{fill:#fff;font:700 12px system-ui;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+svg .n text{fill:#fff;font:700 11.5px system-ui;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
 svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{stroke:#c0392b}svg line.mark{stroke:#e67e22;stroke-width:5}svg line.mark.bad{stroke-dasharray:7 5}svg line.hit{stroke:transparent;stroke-width:22;cursor:pointer}svg{touch-action:none;user-select:none}svg .n{cursor:grab}svg .n.grp rect{stroke:#e67e22}svg .n.drag{opacity:.85}svg .n.drag rect{stroke:#fff}
 .circuit-wrap{max-width:460px;margin:8px auto 0;padding:0 8px}.circuit{width:100%;height:auto;display:block}.cnode circle{fill:#303038;stroke:#777;stroke-width:2}.cnode.good circle{fill:#2f7d42;stroke:#69c27a;stroke-width:3}.cnode.bad circle{fill:#303038;stroke:#777;stroke-width:2}.cnode.selected circle{stroke:#fff;stroke-width:5}.cnode text{fill:#fff !important;font:700 13px system-ui;text-anchor:middle;dominant-baseline:middle}.cwire{stroke:#555;stroke-width:4}.cwire.good{stroke:#55b96b;stroke-width:6}.cwire.bad{stroke:#555}.waffle{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:360px;margin:auto}.mini h4{text-align:center;margin:4px}.mini .row{margin-bottom:3px}.mini .cell{width:30px;height:30px;font-size:15px}.mini button{width:100%;margin-top:5px}.waffle-key{margin-top:12px}.waffle-key>.row{display:block}.waffle-key>.row>.row{display:flex;gap:4px;margin-bottom:4px}.waffle-key .key{max-width:none;height:45px}
+.clist{display:flex;flex-direction:column;gap:5px;max-width:360px;margin:10px auto}
+.ctile{display:flex;align-items:center;gap:10px;min-height:40px;background:#303038;color:#fff;border:2px solid #5c5c65;border-radius:10px;padding:5px 12px;font:700 17px system-ui;letter-spacing:1px;cursor:grab;touch-action:none;user-select:none;position:relative}
+.ctile .grip{color:#8a8a96;font-size:18px;letter-spacing:0}.ctile b{width:20px;color:#9a9aa5;font-size:13px}.ctile .w{flex:1}.ctile small{color:#bdbdc5;font-size:12px;font-weight:500;letter-spacing:0}
+.ctile.selected{border-color:#fff;box-shadow:0 0 0 2px #fff5}.ctile.good{background:#2f7d42;border-color:#69c27a}.ctile.wrong{background:#4a3236;border-color:#a35c63}
+.ctile.lifted{opacity:.35}.ctile.over{border-color:#7fb0e8;box-shadow:0 0 0 3px #7fb0e866}
+.ctile.ghost{position:fixed;z-index:50;pointer-events:none;opacity:.95;margin:0;box-shadow:0 8px 18px #000a;transform:scale(1.03)}
+.help{max-width:400px;margin:10px auto;text-align:center;color:#d4d4da;line-height:1.4}
+#msg.fatal{color:#ff8d8d;padding:8px;border:1px solid #a35c63;border-radius:8px}
 dialog{background:#222;color:#fff;border:1px solid #555;border-radius:12px;max-width:340px}
 pre{white-space:pre-wrap}
-.circuit-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:430px;margin:14px auto}.ctile{min-height:56px;background:#303038;color:#fff;border:2px solid #5c5c65;border-radius:10px;padding:7px 5px;font:700 14px system-ui;cursor:pointer}.ctile small{display:block;color:#bdbdc5;font-size:10px;margin-top:3px;font-weight:500}.ctile.selected{border-color:#fff;box-shadow:0 0 0 2px #fff4}.ctile.good{background:#2f7d42;border-color:#69c27a}.ctile.wrong{background:#3a3032;border-color:#8e555a}.ctile.good small,.ctile.wrong small{color:#eee}@media(max-width:360px){.ctile{font-size:12px}}</style></head><body>
+</style></head><body>
 <header><h1>WordTrio</h1><button class="btn" id="statsBtn">Stats</button></header>
 <nav><button data-g="wordle" class="on">Word</button><button data-g="conn">Groups</button><button data-g="pyra">Pyramid</button><button data-g="circuit">Circuit</button></nav>
 <main><div id="msg"></div><div id="game"></div></main>
 <dialog id="dlg"><div id="dlgBody"></div><div class="actions"><button class="btn" id="share">Share</button><button class="btn" id="close">Close</button></div></dialog>
-<script src="core.js"></script><script src="data.js"></script>
 <script>
+// If anything stops the game from starting, say so on screen instead of leaving a blank page.
+(function () {
+  const show = text => { const m = document.getElementById('msg'); if (m) { m.className = 'fatal'; m.textContent = text; } };
+  window.addEventListener('error', e => {
+    if (window.__wtHandled) return;
+    show('WordTrio could not start: ' + (e.message || 'unknown error') + '. Make sure index.html, core.js and data.js are all uploaded from the same version, then hard-refresh.');
+  });
+  window.__wtShow = text => { window.__wtHandled = true; show(text); };
+})();
+</script>
+<script src="core.js?v=wt-8"></script><script src="data.js?v=wt-8"></script>
+<script>
+if (typeof Core === 'undefined' || Core.VERSION !== 'wt-8' || typeof Data === 'undefined' || !Data.PYRA || !Data.CIRCUIT) {
+  window.__wtShow('WordTrio files do not match: core.js is ' + (typeof Core === 'undefined' ? 'missing' : 'version ' + Core.VERSION) + ' but index.html needs wt-8. Upload index.html, core.js and data.js together, then hard-refresh.');
+  throw new Error('version mismatch');
+}
 const $ = s => document.querySelector(s);
 const STRICT = false; // true: only accept guesses from Data.LIST. Swap in a full dictionary to use this.
 const today = Core.dateKey(), idx = Core.dayIndex();
@@ -128,12 +151,23 @@ function renderConn() {
 }
 
 // ---------- Pyramid ----------
-const POS = [[170,30],[95,105],[245,105],[55,180],[135,180],[205,180],[285,180]];
+// 15 words in a full binary tree, four layers deep: 1 + 2 + 4 + 8. The bottom layer is drawn in two staggered rows so
+// each word gets a wide, readable box on a phone.
+const PW = 340, PH = 232, NODE_W = 70, NODE_H = 28;
+const POS = (() => {
+  const pos = Array(Core.PYRA_N);
+  for (let i = 0; i < 8; i++) pos[7 + i] = [35 + 38.571 * i, i % 2 === 0 ? 178 : 214];
+  for (let j = 0; j < 4; j++) pos[3 + j] = [(pos[7 + 2 * j][0] + pos[8 + 2 * j][0]) / 2, 124];
+  pos[1] = [(pos[3][0] + pos[4][0]) / 2, 72]; pos[2] = [(pos[5][0] + pos[6][0]) / 2, 72];
+  pos[0] = [170, 22];
+  return pos;
+})();
 let P;
+const samePyraWords = a => Array.isArray(a) && a.length === Core.PYRA_N && a.slice().sort().join() === pyraP.nodes.slice().sort().join();
 function pyraSave() { store.set('pyra', P); renderPyra(); }
 function applyMove(from, to) {
   const r = Core.pyraMove(P.arr, P.marks, from, to);
-  if (r.error) say(r.error);
+  if (r.error) say(r.error); else if (r.note) say(r.note);
   if (r.moved) P.arr = r.arr;
   P.sel = null; pyraSave();
 }
@@ -147,7 +181,7 @@ function setupPyraInput(svg) {
   const nodeAt = (x, y, skip) => {
     let best = -1, bd = 1e9;
     POS.forEach(([px, py], i) => { if (skip.includes(i)) return; const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = i; } });
-    return bd < 50 ? best : -1;
+    return bd < 40 ? best : -1;
   };
   svg.addEventListener('pointerdown', e => {
     const n = e.target.closest('.n'); if (!n) return;
@@ -160,7 +194,7 @@ function setupPyraInput(svg) {
     const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
     if (!drag.moved && Math.hypot(dx, dy) < 8) return;
     drag.moved = true;
-    const k = 340 / rect().width;
+    const k = PW / rect().width;
     drag.group.forEach(g => {
       const el = svg.querySelector(`.n[data-i="${g}"]`);
       el.setAttribute('transform', `translate(${dx * k},${dy * k})`); el.classList.add('drag');
@@ -170,20 +204,26 @@ function setupPyraInput(svg) {
     if (!drag) return;
     const d = drag; drag = null;
     if (!d.moved) return tapNode(d.i);
-    const r = rect(), t = nodeAt((e.clientX - r.left) * 340 / r.width, (e.clientY - r.top) * 215 / r.height, [d.i]);
+    const r = rect(), t = nodeAt((e.clientX - r.left) * PW / r.width, (e.clientY - r.top) * PH / r.height, [d.i]);
     if (t < 0) return renderPyra();
     applyMove(d.i, t);
   });
   svg.addEventListener('pointercancel', () => { drag = null; renderPyra(); });
 }
 function renderPyra() {
-  P = day('pyra', { arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], tried: [], known: { green: [], red: [] }, over: false, won: false });
-  P.known = P.known || { green: [], red: [] }; P.tried = P.tried || [];
-  if (P.over && P.won) { P.marks = []; P.known = { green: [], red: [] }; }
+  const fresh = () => ({ date: today, arr: Core.pyraScramble(pyraP, idx), sel: null, marks: [], history: [], tried: [], known: { green: [], red: [] }, over: false, won: false });
+  P = day('pyra', fresh());
+  // A saved game from an older build (7 words, or different words) is discarded.
+  if (!samePyraWords(P.arr)) { P = fresh(); store.set('pyra', P); }
+  P.known = P.known || { green: [], red: [] }; P.tried = P.tried || []; P.history = P.history || [];
   P.marks = (P.marks || []).filter(m => typeof m === 'string');
-  const st = Core.pyraStatus(P.arr, P.known), me = Core.markedEdges(P.arr, P.marks);
+  // Once the game is over, orange marks and selections are gone for good.
+  if (P.over && (P.marks.length || P.sel !== null)) { P.marks = []; P.sel = null; store.set('pyra', P); }
+  const none = Core.EDGES.map(() => '');
+  const st = P.over ? (P.won ? Core.EDGES.map(() => 'good') : none) : Core.pyraStatus(P.arr, P.known);
+  const me = P.over ? Core.EDGES.map(() => false) : Core.markedEdges(P.arr, P.marks);
   const selGroup = P.sel === null ? [] : Core.groupOf(P.arr, P.marks, P.sel);
-  let s = '<svg viewBox="0 0 340 215">';
+  let s = `<svg viewBox="0 0 ${PW} ${PH}" id="pyraSvg">`;
   Core.EDGES.forEach(([a, b], i) => {
     const cls = st[i] === 'good' ? 'good' : me[i] ? 'mark ' + st[i] : st[i];
     const c = `x1="${POS[a][0]}" y1="${POS[a][1]}" x2="${POS[b][0]}" y2="${POS[b][1]}"`;
@@ -193,16 +233,17 @@ function renderPyra() {
   P.arr.forEach((w, i) => {
     const ok = Core.EDGES.every(([a, b], e) => (a !== i && b !== i) || st[e] === 'good');
     const grp = Core.groupOf(P.arr, P.marks, i).length > 1;
-    s += `<g class="n ${selGroup.includes(i) ? 'sel' : ''} ${ok ? 'ok' : ''} ${grp ? 'grp' : ''}" data-i="${i}"><rect x="${POS[i][0] - 33}" y="${POS[i][1] - 16}" width="66" height="32"/><text x="${POS[i][0]}" y="${POS[i][1]}">${w}</text></g>`;
+    s += `<g class="n ${selGroup.includes(i) ? 'sel' : ''} ${ok ? 'ok' : ''} ${grp ? 'grp' : ''}" data-i="${i}"><rect x="${POS[i][0] - NODE_W / 2}" y="${POS[i][1] - NODE_H / 2}" width="${NODE_W}" height="${NODE_H}"/><text x="${POS[i][0]}" y="${POS[i][1]}">${w}</text></g>`;
   });
   s += '</svg>';
   if (P.over) {
     const n = pyraP.nodes;
-    s += '<p style="text-align:center;color:#aaa">' + Core.EDGES.map(([a, b]) => n[a] + n[b]).join(' · ') + '</p>';
+    s += '<p class="help">' + Core.EDGES.map(([a, b]) => n[a] + n[b]).join(' · ') + '</p>';
   } else {
-    s += '<p style="text-align:center;color:#aaa">Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group, onto a any level. Green links stay green while those two words stay together.</p>';
+    s += '<p class="help">Fifteen words make a pyramid four layers deep. Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group. Green links stay green while those two words stay together.</p>';
   }
-  s += `<div class="dots">Guesses left: ${'● '.repeat(4 - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
+  const G = Core.PYRA_GUESSES;
+  s += `<div class="dots">Guesses left: ${'● '.repeat(G - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
   if (!P.over) s += '<div class="actions"><button class="btn" id="pg">Submit guess</button></div>';
   $('#game').innerHTML = s;
   if (P.over) return;
@@ -218,37 +259,90 @@ function renderPyra() {
     if (P.tried.includes(key)) return say('Already guessed');
     const res = Core.pyraLinks(P.arr, pyraP);
     P.tried.push(key); P.history.push(res); P.known = Core.pyraRecord(P.arr, pyraP, P.known);
-    if (res.every(Boolean)) { P.over = P.won = true; say('Solved'); }
-    else if (P.history.length >= 4) { P.over = true; P.arr = pyraP.nodes.slice(); say('Out of guesses'); }
-    else say(res.filter(Boolean).length + ' of 6 links correct');
+    if (res.every(Boolean)) { P.over = P.won = true; P.marks = []; P.sel = null; say('Solved'); }
+    else if (P.history.length >= G) { P.over = true; P.marks = []; P.sel = null; P.arr = pyraP.nodes.slice(); say('Out of guesses'); }
+    else say(res.filter(Boolean).length + ' of ' + res.length + ' links correct');
     pyraSave();
     if (P.over) finish('pyra', P, P.won);
   };
 }
 
 // ---------- Circuit ----------
+// A numbered list of words. Drag a word onto another to swap them (tapping one then another also works).
+// Nothing is coloured until Check loop is pressed.
 let CIRC;
 function renderCircuit() {
   const p = Core.pick(Data.CIRCUIT, idx);
-  CIRC = day('circuit', { arr: Core.circuitBoard(p, idx), guesses: 0, feedback: null, over: false, won: false });
-  if (!Array.isArray(CIRC.arr) || CIRC.arr.length !== p.words.length) CIRC.arr = Core.circuitBoard(p, idx);
-  // A previous build persisted automatic feedback. Ignore it unless this build explicitly stored a feedback result.
-  const links = Array.isArray(CIRC.feedback) && CIRC.feedback.length === CIRC.arr.length ? CIRC.feedback : CIRC.arr.map(() => null);
-  let h = '<p class="game-help"><b>How to play:</b> tap two tiles to swap them. Each word must end with the same two letters that begin the next word. The last tile must link back to the first. Press Check loop to reveal feedback.</p>';
-  h += '<div class="circuit-list">' + CIRC.arr.map((w,i)=>`<button class="ctile ${links[i]===true?'good':links[i]===false?'wrong':''}" data-ci="${i}"><span>${w}</span><small>${i===CIRC.arr.length-1?'↻ back to first':'→ next'}</small></button>`).join('') + '</div>';
+  const fresh = () => ({ date: today, puzzle: p.id, arr: Core.circuitBoard(p, idx), guesses: 0, feedback: null, over: false, won: false });
+  CIRC = day('circuit', fresh());
+  // A saved game for a different puzzle (older builds had different loops) is discarded.
+  if (CIRC.puzzle !== p.id || !Array.isArray(CIRC.arr) || CIRC.arr.slice().sort().join() !== p.words.slice().sort().join()) { CIRC = fresh(); store.set('circuit', CIRC); }
+  if (!Array.isArray(CIRC.feedback)) CIRC.feedback = null;
+  const n = CIRC.arr.length, fb = CIRC.feedback;
+  let h = '<p class="help"><b>How to play:</b> drag a word onto another to swap them. Each word must end with the two letters that start the next word, and the last word must link back to the first. Press Check loop to see which links work.</p>';
+  h += '<div class="clist" id="clist">' + CIRC.arr.map((w, i) => {
+    const state = fb ? (fb[i] ? 'good' : 'wrong') : '';
+    return `<div class="ctile ${state}" data-ci="${i}"><span class="grip">⠿</span><b>${i + 1}</b><span class="w">${w}</span><small>${fb ? (fb[i] ? '✓ ' : '✗ ') : ''}${i === n - 1 ? '↩ first' : '↓'}</small></div>`;
+  }).join('') + '</div>';
   h += `<div class="dots">Checks used: ${CIRC.guesses}/5</div>`;
   if (!CIRC.over) h += '<div class="actions"><button class="btn" id="cshuffle">Shuffle</button><button class="btn" id="ccheck">Check loop</button></div>';
-  $('#game').innerHTML=h;
+  else h += '<p class="help">' + (CIRC.won ? 'Loop closed.' : 'Out of checks. One valid loop: ' + p.solution.join(' → ') + ' → ' + p.solution[0]) + '</p>';
+  $('#game').innerHTML = h;
   if (CIRC.over) return;
-  let selected = null;
-  document.querySelectorAll('[data-ci]').forEach(node=>node.onclick=()=>{
-    const i=+node.dataset.ci;
-    if(selected===null){ selected=i; node.classList.add('selected'); }
-    else if(selected===i){ selected=null; node.classList.remove('selected'); }
-    else { CIRC.arr=Core.swap(CIRC.arr,selected,i); CIRC.feedback=null; selected=null; store.set('circuit',CIRC); renderCircuit(); }
+  bindCircuitDrag($('#clist'));
+  $('#cshuffle').onclick = () => { CIRC.arr = Core.shuffle(CIRC.arr, Date.now() & 65535); CIRC.feedback = null; store.set('circuit', CIRC); renderCircuit(); };
+  $('#ccheck').onclick = () => {
+    const r = Core.circuitCheck(CIRC.arr, p);
+    CIRC.feedback = r.links; CIRC.guesses++;
+    if (r.solved) { CIRC.over = CIRC.won = true; say('Loop closed'); }
+    else if (CIRC.guesses >= 5) { CIRC.over = true; say('Out of checks'); }
+    else say(r.correct + ' of ' + n + ' links correct');
+    store.set('circuit', CIRC); renderCircuit();
+    if (CIRC.over) finish('circuit', CIRC, CIRC.won);
+  };
+}
+function swapCircuit(i, j) {
+  CIRC.arr = Core.swap(CIRC.arr, i, j); CIRC.feedback = null;
+  store.set('circuit', CIRC); renderCircuit();
+}
+function bindCircuitDrag(list) {
+  let d = null, selected = null;
+  const tileAt = (x, y, skip) => document.elementsFromPoint(x, y).find(el => el.classList && el.classList.contains('ctile') && el !== skip) || null;
+  const cleanup = s => { if (s.ghost) s.ghost.remove(); if (s.over) s.over.classList.remove('over'); s.el.classList.remove('lifted'); };
+  list.addEventListener('pointerdown', e => {
+    const t = e.target.closest('.ctile'); if (!t) return;
+    d = { i: +t.dataset.ci, el: t, x: e.clientX, y: e.clientY, active: false, ghost: null, over: null, ox: 0, oy: 0 };
+    try { list.setPointerCapture(e.pointerId); } catch (err) {}
   });
-  $('#cshuffle').onclick=()=>{CIRC.arr=Core.shuffle(CIRC.arr,Date.now()&65535);CIRC.feedback=null;store.set('circuit',CIRC);renderCircuit();};
-  $('#ccheck').onclick=()=>{const r=Core.circuitCheck(CIRC.arr,p);CIRC.feedback=r.links;CIRC.guesses++;if(r.solved){CIRC.over=CIRC.won=true;say('Circuit closed');}else if(CIRC.guesses>=5){CIRC.over=true;say('The loop was not closed');}else say(r.correct+' of '+CIRC.arr.length+' links correct');store.set('circuit',CIRC);renderCircuit();if(CIRC.over)finish('circuit',CIRC,CIRC.won);};
+  list.addEventListener('pointermove', e => {
+    if (!d) return;
+    if (!d.active) {
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) return;
+      d.active = true;
+      const r = d.el.getBoundingClientRect();
+      d.ox = d.x - r.left; d.oy = d.y - r.top;
+      const g = d.el.cloneNode(true);
+      g.classList.add('ghost'); g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+      document.body.appendChild(g); d.ghost = g;
+      d.el.classList.add('lifted');
+      if (selected !== null) { selected = null; }
+    }
+    d.ghost.style.left = (e.clientX - d.ox) + 'px'; d.ghost.style.top = (e.clientY - d.oy) + 'px';
+    const t = tileAt(e.clientX, e.clientY, d.el);
+    if (d.over !== t) { if (d.over) d.over.classList.remove('over'); d.over = t; if (t) t.classList.add('over'); }
+    if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 70) window.scrollBy(0, 14);
+  });
+  list.addEventListener('pointerup', e => {
+    if (!d) return;
+    const s = d; d = null;
+    cleanup(s);
+    if (s.active) { if (s.over) swapCircuit(s.i, +s.over.dataset.ci); return; }
+    // a tap: select a word, then tap another to swap
+    if (selected === null) { selected = s.i; s.el.classList.add('selected'); }
+    else if (selected === s.i) { selected = null; s.el.classList.remove('selected'); }
+    else { const from = selected; selected = null; swapCircuit(from, s.i); }
+  });
+  list.addEventListener('pointercancel', () => { if (d) { cleanup(d); d = null; } });
 }
 
 // ---------- Stats dialog ----------

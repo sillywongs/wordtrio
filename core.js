@@ -3,8 +3,13 @@
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.Core = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
+  // index.html checks this so a mix of old and new files is reported instead of leaving a blank board.
+  const VERSION = 'wt-8';
   const EPOCH = Date.UTC(2026, 0, 1);
-  const EDGES = [[0,1],[0,2],[1,3],[1,4],[2,5],[2,6]];
+  // Pyramid: 15 words in a full binary tree, four layers deep (1 + 2 + 4 + 8). Node i has children 2i+1 and 2i+2.
+  const PYRA_N = 15, PYRA_GUESSES = 6;
+  const EDGES = [];
+  for (let i = 0; i < 7; i++) { EDGES.push([i, 2 * i + 1]); EDGES.push([i, 2 * i + 2]); }
 
   function dateKey(d) {
     d = d || new Date();
@@ -99,7 +104,7 @@
   const pyraSolved = (arr, p) => pyraLinks(arr, p).every(Boolean);
   function pyraScramble(puzzle, seed) {
     let s = seed, arr;
-    do { arr = shuffle(puzzle.nodes, s++); } while (pyraSolved(arr, puzzle) || pyraLinks(arr, puzzle).filter(Boolean).length > 1);
+    do { arr = shuffle(puzzle.nodes, s++); } while (pyraSolved(arr, puzzle) || pyraLinks(arr, puzzle).filter(Boolean).length > 2);
     return arr;
   }
   // Verified knowledge survives swaps: a pair stays green or red for as long as the same two words stay linked.
@@ -132,46 +137,59 @@
     }
     return g.sort((x, y) => x - y);
   }
-  const adjacent = (a, b) => EDGES.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
-  function connected(set) {
-    const seen = [set[0]], stack = [set[0]];
-    while (stack.length) { const c = stack.pop(); set.forEach(n => { if (!seen.includes(n) && adjacent(c, n)) { seen.push(n); stack.push(n); } }); }
-    return seen.length === set.length;
-  }
-  function combos(n, k, from = 0) {
-    if (k === 0) return [[]];
-    const out = [];
-    for (let i = from; i <= n - k; i++) combos(n, k - 1, i + 1).forEach(r => out.push([i, ...r]));
-    return out;
-  }
-  function perms(a) {
-    return a.length < 2 ? [a] : a.flatMap((x, i) => perms(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x, ...p]));
-  }
-  // Move a marked group to any level. The dragged word lands on `to`.
-  // The candidate that preserves the most downward tree links wins. A group may cross levels.
+  const childrenOf = i => [2 * i + 1, 2 * i + 2].filter(x => x < PYRA_N);
+  const parentOf = i => (i > 0 ? (i - 1) >> 1 : -1);
+  // Move the word at `from` onto position `to`.
+  // A lone word swaps with the word it lands on.
+  // A marked group moves as one piece, to any layer. The dragged word lands on `to`, and the rest of the group is
+  // placed to keep as many of its downward links as possible (a child goes to a child position, a parent to the
+  // parent position). Words that were in the way fill the spots the group left.
   function pyraMove(arr, marks, from, to) {
     if (from === to) return { arr, moved: false };
     const G = groupOf(arr, marks, from);
     if (G.length === 1) return { arr: swap(arr, from, to), moved: true };
-    const rest = G.filter(g => g !== from);
-    const pool = arr.map((_, i) => i).filter(i => i !== to);
-    const edge = (a, b) => EDGES.some(([x, y]) => x === a && y === b);
-    const permsOf = a => a.length < 2 ? [a] : a.flatMap((x, i) => permsOf(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x, ...p]));
+    const me = markedEdges(arr, marks);
+    const order = [from], anchor = new Map(), seen = new Set([from]);
+    for (let q = 0; q < order.length; q++) {
+      const u = order[q];
+      EDGES.forEach(([a, b], e) => {
+        if (!me[e]) return;
+        const v = a === u ? b : b === u ? a : -1;
+        if (v >= 0 && !seen.has(v)) { seen.add(v); order.push(v); anchor.set(v, { u, down: a === u }); }
+      });
+    }
     let best = null;
-    permsOf(pool).forEach(p => {
-      const f = new Map([[from, to]]);
-      rest.forEach((g, i) => f.set(g, p[i]));
-      const kept = EDGES.filter(([a, b]) => f.has(a) && f.has(b) && edge(f.get(a), f.get(b))).length;
-      const distance = G.reduce((sum, g) => sum + Math.abs(f.get(g) - g), 0);
-      if (!best || kept > best.kept || (kept === best.kept && distance < best.distance)) best = { f, kept, distance };
-    });
+    const f = new Map([[from, to]]), used = new Set([to]);
+    (function dfs(k, kept, dist) {
+      if (k === order.length) {
+        if (!best || kept > best.kept || (kept === best.kept && dist < best.dist)) best = { f: new Map(f), kept, dist };
+        return;
+      }
+      const v = order[k], { u, down } = anchor.get(v), pu = f.get(u);
+      const ideal = (down ? childrenOf(pu) : (pu > 0 ? [parentOf(pu)] : [])).filter(p => !used.has(p));
+      if (ideal.length) {
+        ideal.forEach(p => { f.set(v, p); used.add(p); dfs(k + 1, kept + 1, dist + Math.abs(p - v)); used.delete(p); f.delete(v); });
+      } else {
+        let p = -1, bd = 1e9;
+        for (let x = 0; x < PYRA_N; x++) if (!used.has(x) && Math.abs(x - pu) < bd) { bd = Math.abs(x - pu); p = x; }
+        f.set(v, p); used.add(p); dfs(k + 1, kept, dist + Math.abs(p - v)); used.delete(p); f.delete(v);
+      }
+    })(1, 0, 0);
     const out = arr.slice();
-    const destinations = G.map(g => best.f.get(g));
-    const displaced = destinations.filter(d => !G.includes(d)).sort((a, b) => a - b);
-    const vacancies = G.filter(g => !destinations.includes(g)).sort((a, b) => a - b);
     G.forEach(g => { out[best.f.get(g)] = arr[g]; });
-    displaced.forEach((d, i) => { out[vacancies[i]] = arr[d]; });
-    return { arr: out, moved: true, note: best.kept < EDGES.filter(([a, b]) => G.includes(a) && G.includes(b)).length ? 'Group moved, but its links now cross levels' : '' };
+    const dest = G.map(g => best.f.get(g));
+    const displaced = dest.filter(d => !G.includes(d)).sort((x, y) => x - y);
+    const vacated = G.filter(g => !dest.includes(g)).sort((x, y) => x - y);
+    // Prefer a clean swap: a displaced word goes back to the spot of the group word that took its place.
+    const leftD = [], leftV = vacated.slice();
+    displaced.forEach(d => {
+      const g = G.find(x => best.f.get(x) === d);
+      const at = leftV.indexOf(g);
+      if (at >= 0) { out[g] = arr[d]; leftV.splice(at, 1); } else leftD.push(d);
+    });
+    leftD.forEach((d, i) => { out[leftV[i]] = arr[d]; });
+    const links = me.filter(Boolean).length;
+    return { arr: out, moved: true, note: best.kept < links ? 'Group moved, but its links now cross layers' : '' };
   }
   function swap(arr, i, j) { const a = arr.slice(); [a[i], a[j]] = [a[j], a[i]]; return a; }
 
@@ -184,20 +202,21 @@
   }
   const circuitSolved = (arr, puzzle) => circuitLinks(arr, puzzle.overlap).every(Boolean);
   function circuitBoard(puzzle, seed) {
-  let s = seed, arr = shuffle(puzzle.words, s), tries = 0;
-  while ((circuitSolved(arr, puzzle) || circuitLinks(arr, puzzle.overlap).filter(Boolean).length > 1) && tries++ < 500) arr = shuffle(puzzle.words, ++s);
-  return arr;
-}
-function circuitCycleCount(words, overlap) {
-  const k = overlap || 2, n = words.length;
-  const nxt = words.map((w, i) => words.map((x, j) => j !== i && w.slice(-k) === x.slice(0, k) ? j : -1).filter(j => j >= 0));
-  let count = 0;
-  (function walk(path, used) {
-    if (path.length === n) { if (nxt[path[n - 1]].includes(0)) count++; return; }
-    nxt[path[path.length - 1]].forEach(j => { if (!(used >> j & 1)) walk(path.concat(j), used | (1 << j)); });
-  })([0], 1);
-  return count;
-}
+    let s = seed, arr = shuffle(puzzle.words, s), tries = 0;
+    while ((circuitSolved(arr, puzzle) || circuitLinks(arr, puzzle.overlap).filter(Boolean).length > 1) && tries++ < 500) arr = shuffle(puzzle.words, ++s);
+    return arr;
+  }
+  // How many different rings the words can form (counted from the first word, so rotations are not repeated).
+  function circuitCycleCount(words, overlap) {
+    const k = overlap || 2, n = words.length;
+    const nxt = words.map((w, i) => words.map((x, j) => j !== i && w.slice(-k) === x.slice(0, k) ? j : -1).filter(j => j >= 0));
+    let count = 0;
+    (function walk(path, used) {
+      if (path.length === n) { if (nxt[path[n - 1]].includes(0)) count++; return; }
+      nxt[path[path.length - 1]].forEach(j => { if (!(used >> j & 1)) walk(path.concat(j), used | (1 << j)); });
+    })([0], 1);
+    return count;
+  }
   function circuitCheck(arr, puzzle) {
     const links = circuitLinks(arr, puzzle.overlap);
     return { links, correct: links.filter(Boolean).length, solved: links.every(Boolean) };
@@ -228,11 +247,11 @@ function circuitCycleCount(words, overlap) {
     return 'WordTrio Connections ' + key + '\n' + rows.join('\n');
   }
   function sharePyra(history, key, won) {
-    return 'WordTrio Pyramid ' + key + ' ' + (won ? history.length : 'X') + '/4\n' +
+    return 'WordTrio Pyramid ' + key + ' ' + (won ? history.length : 'X') + '/' + PYRA_GUESSES + '\n' +
       history.map(h => h.map(b => b ? '🟩' : '🟥').join('')).join('\n');
   }
 
-  return { EDGES, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
-    validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, circuitCycleCount, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
+  return { VERSION, EDGES, PYRA_N, PYRA_GUESSES, childrenOf, parentOf, circuitCycleCount, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
+    validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
     pyraScramble, pyraRecord, pyraStatus, validSet, pairKey, markedEdges, groupOf, pyraMove, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });

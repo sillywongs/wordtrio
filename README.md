@@ -1,43 +1,31 @@
 # WordTrio
 
-A static daily word-puzzle site built with HTML, CSS and JavaScript.
+Four daily word puzzles in one static web app: Word, Groups, Pyramid and Circuit. No build step, no server.
 
-## Modes
+Live site: https://sillywongs.github.io/wordtrio/
 
-| Mode | Rules |
-|---|---|
-| Word | Guess a five-letter answer in six tries. |
-| Groups | Sort 16 words into four hidden groups. Four mistakes allowed. |
-| Pyramid | Arrange seven words in a compound-word tree. Tap or drag to swap; orange marks move linked groups. |
-| Circuit | Arrange nine words in a ring. The last two letters of each word must match the first two of the next. Tap two words to swap them, then press Check loop. |
+| Mode | Link | Rules |
+|---|---|---|
+| Word | `#wordle` | Guess a five-letter word in six tries. |
+| Groups | `#conn` | Sort 16 words into four hidden groups. Four mistakes allowed. |
+| Pyramid | `#pyra` | Arrange 15 words in a four-layer pyramid (1, 2, 4 and 8 words) so each upper word plus the word below it makes one word. Six guesses. |
+| Circuit | `#circuit` | Arrange 8 to 10 words in a ring. Each word's last two letters must equal the next word's first two letters, and the last word must link back to the first. Drag a word onto another to swap them. Nothing is coloured until you press Check loop. Five checks. |
 
-## Links
+## Pyramid
+- 15 words, 4 layers, 14 downward links. FIRE above WORK works (FIREWORK). WORK above FIRE does not.
+- Drag a word onto another to swap, or tap one and then the other. Finger drags work on phones.
+- Tap a line to mark it orange. Marked words move together as a group, to any layer.
+- After a guess, correct links turn green and stay green while those two words stay together.
+- Solving it, or running out of guesses, clears every orange mark.
+- Every puzzle has exactly one tree, so only mirror images of the same layout count as correct.
 
-- `#wordle`
-- `#conn`
-- `#pyra`
-- `#circuit`
+## Circuit
+- Press and drag a word, drop it on another word, and the two swap. A copy follows your finger and the target lights up. Tapping one word then another also works.
+- Any ring that satisfies the rule wins, not only the stored one.
 
-## Run locally
+## Files
+`index.html`, `core.js` and `data.js` must come from the same version. If they differ, WordTrio says so in red on screen. `test.js` runs the logic tests (`node test.js`).
 
-Open `index.html`, or run `python3 -m http.server` in the folder.
-
-## Test
-
-Run `node test.js`. The suite covers the four live modes, Pyramid group movement, Circuit validation, deterministic daily selection, dates, streaks and share text.
-
-## Daily puzzles
-
-`Core.dayIndex()` counts local calendar days since 2026-01-01. Every player receives the same puzzle for a given local day. Puzzle content lives in `data.js`.
-
-## Storage
-
-Progress is stored in browser local storage. It survives closing the browser on the same device and browser. Clearing site data removes it. There is no cross-device sync.
-
-## PWA files
-
-Keep `manifest.webmanifest`, `sw.js` and the icon files beside `index.html` for Add to Home Screen support.
-
-## Known limits
-
-The starter content repeats after four Circuit puzzles and six Connections or Pyramid puzzles. Add more curated content in `data.js` before public launch.
+## Add content
+- Pyramid: add an entry to `PYRA` in `data.js`: 15 words in heap order (top, its two children, the next four, the bottom eight). Node i's children are 2i+1 and 2i+2. List extra valid compounds in `extra`. `node test.js` checks each puzzle has exactly one tree.
+- Circuit: add a ring to `CIRCUIT`. `node test.js` checks the ring and the joins.
