@@ -4,10 +4,12 @@
   else root.Core = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   // index.html checks this so a mix of old and new files is reported instead of leaving a blank board.
-  const VERSION = 'wt-8';
+  const VERSION = 'wt-9';
   const EPOCH = Date.UTC(2026, 0, 1);
   // Pyramid: 15 words in a full binary tree, four layers deep (1 + 2 + 4 + 8). Node i has children 2i+1 and 2i+2.
   const PYRA_N = 15, PYRA_GUESSES = 6;
+  // Circuit: checks allowed per day.
+  const CIRCUIT_CHECKS = 4;
   const EDGES = [];
   for (let i = 0; i < 7; i++) { EDGES.push([i, 2 * i + 1]); EDGES.push([i, 2 * i + 2]); }
 
@@ -67,6 +69,10 @@
   function validWordleGuess(g, words, strict) {
     if (!/^[a-z]{5}$/i.test(g)) return false;
     return strict ? words.includes(g.toLowerCase()) : true;
+  }
+  // true when the guess is a five-letter word found in `known` (a Set of lower-case words).
+  function isKnownWord(g, known) {
+    return /^[a-z]{5}$/i.test(g) && known.has(g.toLowerCase());
   }
 
   // ---- Connections ----
@@ -139,15 +145,28 @@
   }
   const childrenOf = i => [2 * i + 1, 2 * i + 2].filter(x => x < PYRA_N);
   const parentOf = i => (i > 0 ? (i - 1) >> 1 : -1);
-  // Move the word at `from` onto position `to`.
-  // A lone word swaps with the word it lands on.
-  // A marked group moves as one piece, to any layer. The dragged word lands on `to`, and the rest of the group is
-  // placed to keep as many of its downward links as possible (a child goes to a child position, a parent to the
-  // parent position). Words that were in the way fill the spots the group left.
+  // Marked links are locked: no move may break one. A marked link is broken when its two words are no longer
+  // joined by a downward line (upper word, lower word).
+  const markedKeys = (arr, marks) => EDGES.filter((_, e) => markedEdges(arr, marks)[e]).map(([a, b]) => pairKey(arr[a], arr[b]));
+  const linksIntact = (before, out) => {
+    const now = new Set(EDGES.map(([a, b]) => pairKey(out[a], out[b])));
+    return before.every(k => now.has(k));
+  };
+  function permutations(a) {
+    return a.length < 2 ? [a] : a.flatMap((x, i) => permutations(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x, ...p]));
+  }
+  // Move the word at `from` onto position `to`. Returns { arr, moved } or { arr, moved: false, error }.
+  // A lone word swaps with the word it lands on. A marked group moves as one piece, to any layer, and only to a
+  // spot where every one of its links still runs downward (a child sits in a child spot of its parent's new spot).
+  // The words that were in the way fill the places the group left. If a move would break any marked link, in the
+  // group or in another group, it is refused.
   function pyraMove(arr, marks, from, to) {
     if (from === to) return { arr, moved: false };
-    const G = groupOf(arr, marks, from);
-    if (G.length === 1) return { arr: swap(arr, from, to), moved: true };
+    const G = groupOf(arr, marks, from), keys = markedKeys(arr, marks);
+    if (G.length === 1) {
+      const out = swap(arr, from, to);
+      return linksIntact(keys, out) ? { arr: out, moved: true } : { arr, moved: false, error: 'That would break a marked link. Unmark it first.' };
+    }
     const me = markedEdges(arr, marks);
     const order = [from], anchor = new Map(), seen = new Set([from]);
     for (let q = 0; q < order.length; q++) {
@@ -158,38 +177,38 @@
         if (v >= 0 && !seen.has(v)) { seen.add(v); order.push(v); anchor.set(v, { u, down: a === u }); }
       });
     }
-    let best = null;
-    const f = new Map([[from, to]]), used = new Set([to]);
-    (function dfs(k, kept, dist) {
-      if (k === order.length) {
-        if (!best || kept > best.kept || (kept === best.kept && dist < best.dist)) best = { f: new Map(f), kept, dist };
-        return;
-      }
+    const places = [], f = new Map([[from, to]]), used = new Set([to]);
+    (function dfs(k, dist) {
+      if (places.length >= 4000) return;
+      if (k === order.length) { places.push({ f: new Map(f), dist }); return; }
       const v = order[k], { u, down } = anchor.get(v), pu = f.get(u);
-      const ideal = (down ? childrenOf(pu) : (pu > 0 ? [parentOf(pu)] : [])).filter(p => !used.has(p));
-      if (ideal.length) {
-        ideal.forEach(p => { f.set(v, p); used.add(p); dfs(k + 1, kept + 1, dist + Math.abs(p - v)); used.delete(p); f.delete(v); });
-      } else {
-        let p = -1, bd = 1e9;
-        for (let x = 0; x < PYRA_N; x++) if (!used.has(x) && Math.abs(x - pu) < bd) { bd = Math.abs(x - pu); p = x; }
-        f.set(v, p); used.add(p); dfs(k + 1, kept, dist + Math.abs(p - v)); used.delete(p); f.delete(v);
-      }
-    })(1, 0, 0);
-    const out = arr.slice();
-    G.forEach(g => { out[best.f.get(g)] = arr[g]; });
-    const dest = G.map(g => best.f.get(g));
-    const displaced = dest.filter(d => !G.includes(d)).sort((x, y) => x - y);
-    const vacated = G.filter(g => !dest.includes(g)).sort((x, y) => x - y);
-    // Prefer a clean swap: a displaced word goes back to the spot of the group word that took its place.
-    const leftD = [], leftV = vacated.slice();
-    displaced.forEach(d => {
-      const g = G.find(x => best.f.get(x) === d);
-      const at = leftV.indexOf(g);
-      if (at >= 0) { out[g] = arr[d]; leftV.splice(at, 1); } else leftD.push(d);
-    });
-    leftD.forEach((d, i) => { out[leftV[i]] = arr[d]; });
-    const links = me.filter(Boolean).length;
-    return { arr: out, moved: true, note: best.kept < links ? 'Group moved, but its links now cross layers' : '' };
+      (down ? childrenOf(pu) : (pu > 0 ? [parentOf(pu)] : [])).filter(p => !used.has(p)).forEach(p => {
+        f.set(v, p); used.add(p); dfs(k + 1, dist + Math.abs(p - v)); used.delete(p); f.delete(v);
+      });
+    })(1, 0);
+    if (!places.length) return { arr, moved: false, error: 'That group cannot sit there without breaking its links.' };
+    places.sort((x, y) => x.dist - y.dist);
+    const fillings = p => {
+      const dest = G.map(g => p.f.get(g));
+      const displaced = dest.filter(d => !G.includes(d)), vacated = G.filter(g => !dest.includes(g));
+      const swapped = [], rest = vacated.slice(), left = [];
+      displaced.forEach(d => {
+        const g = G.find(x => p.f.get(x) === d), at = rest.indexOf(g);
+        if (at >= 0) { swapped.push([g, d]); rest.splice(at, 1); } else left.push(d);
+      });
+      const build = o2 => {
+        const out = arr.slice();
+        G.forEach(g => { out[p.f.get(g)] = arr[g]; });
+        swapped.forEach(([g, d]) => { out[g] = arr[d]; });
+        left.forEach((d, i) => { out[o2[i]] = arr[d]; });
+        return out;
+      };
+      const res = [build(rest)];
+      if (left.length > 1 && left.length <= 5) permutations(rest).forEach(pm => res.push(build(pm)));
+      return res;
+    };
+    for (const p of places) for (const out of fillings(p)) if (linksIntact(keys, out)) return { arr: out, moved: true };
+    return { arr, moved: false, error: 'That would break another marked link. Unmark it first.' };
   }
   function swap(arr, i, j) { const a = arr.slice(); [a[i], a[j]] = [a[j], a[i]]; return a; }
 
@@ -216,6 +235,11 @@
       nxt[path[path.length - 1]].forEach(j => { if (!(used >> j & 1)) walk(path.concat(j), used | (1 << j)); });
     })([0], 1);
     return count;
+  }
+  // Average number of words that could follow each word: a rough measure of how many wrong joins look right.
+  function circuitBranching(words, overlap) {
+    const k = overlap || 2;
+    return words.reduce((s, w) => s + words.filter(x => x !== w && w.slice(-k) === x.slice(0, k)).length, 0) / words.length;
   }
   function circuitCheck(arr, puzzle) {
     const links = circuitLinks(arr, puzzle.overlap);
@@ -251,7 +275,7 @@
       history.map(h => h.map(b => b ? '🟩' : '🟥').join('')).join('\n');
   }
 
-  return { VERSION, EDGES, PYRA_N, PYRA_GUESSES, childrenOf, parentOf, circuitCycleCount, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
+  return { VERSION, EDGES, PYRA_N, PYRA_GUESSES, CIRCUIT_CHECKS, childrenOf, parentOf, circuitCycleCount, circuitBranching, isKnownWord, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
     validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
     pyraScramble, pyraRecord, pyraStatus, validSet, pairKey, markedEdges, groupOf, pyraMove, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });

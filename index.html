@@ -34,8 +34,8 @@ svg .n.sel rect{stroke:#fff;fill:#6d6d78}svg .n.ok rect{stroke:var(--c)}
 svg .n text{fill:#fff;font:700 11.5px system-ui;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
 svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{stroke:#c0392b}svg line.mark{stroke:#e67e22;stroke-width:5}svg line.mark.bad{stroke-dasharray:7 5}svg line.hit{stroke:transparent;stroke-width:22;cursor:pointer}svg{touch-action:none;user-select:none}svg .n{cursor:grab}svg .n.grp rect{stroke:#e67e22}svg .n.drag{opacity:.85}svg .n.drag rect{stroke:#fff}
 .circuit-wrap{max-width:460px;margin:8px auto 0;padding:0 8px}.circuit{width:100%;height:auto;display:block}.cnode circle{fill:#303038;stroke:#777;stroke-width:2}.cnode.good circle{fill:#2f7d42;stroke:#69c27a;stroke-width:3}.cnode.bad circle{fill:#303038;stroke:#777;stroke-width:2}.cnode.selected circle{stroke:#fff;stroke-width:5}.cnode text{fill:#fff !important;font:700 13px system-ui;text-anchor:middle;dominant-baseline:middle}.cwire{stroke:#555;stroke-width:4}.cwire.good{stroke:#55b96b;stroke-width:6}.cwire.bad{stroke:#555}.waffle{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:360px;margin:auto}.mini h4{text-align:center;margin:4px}.mini .row{margin-bottom:3px}.mini .cell{width:30px;height:30px;font-size:15px}.mini button{width:100%;margin-top:5px}.waffle-key{margin-top:12px}.waffle-key>.row{display:block}.waffle-key>.row>.row{display:flex;gap:4px;margin-bottom:4px}.waffle-key .key{max-width:none;height:45px}
-.clist{display:flex;flex-direction:column;gap:5px;max-width:360px;margin:10px auto}
-.ctile{display:flex;align-items:center;gap:10px;min-height:40px;background:#303038;color:#fff;border:2px solid #5c5c65;border-radius:10px;padding:5px 12px;font:700 17px system-ui;letter-spacing:1px;cursor:grab;touch-action:none;user-select:none;position:relative}
+.clist{display:flex;flex-direction:column;gap:4px;max-width:360px;margin:10px auto}
+.ctile{display:flex;align-items:center;gap:10px;min-height:36px;background:#303038;color:#fff;border:2px solid #5c5c65;border-radius:10px;padding:3px 12px;font:700 17px system-ui;letter-spacing:1px;cursor:grab;touch-action:none;user-select:none;position:relative}
 .ctile .grip{color:#8a8a96;font-size:18px;letter-spacing:0}.ctile b{width:20px;color:#9a9aa5;font-size:13px}.ctile .w{flex:1}.ctile small{color:#bdbdc5;font-size:12px;font-weight:500;letter-spacing:0}
 .ctile.selected{border-color:#fff;box-shadow:0 0 0 2px #fff5}.ctile.good{background:#2f7d42;border-color:#69c27a}.ctile.wrong{background:#4a3236;border-color:#a35c63}
 .ctile.lifted{opacity:.35}.ctile.over{border-color:#7fb0e8;box-shadow:0 0 0 3px #7fb0e866}
@@ -60,14 +60,28 @@ pre{white-space:pre-wrap}
   window.__wtShow = text => { window.__wtHandled = true; show(text); };
 })();
 </script>
-<script src="core.js?v=wt-8"></script><script src="data.js?v=wt-8"></script>
+<script src="core.js?v=wt-9"></script><script src="data.js?v=wt-9"></script>
 <script>
-if (typeof Core === 'undefined' || Core.VERSION !== 'wt-8' || typeof Data === 'undefined' || !Data.PYRA || !Data.CIRCUIT) {
-  window.__wtShow('WordTrio files do not match: core.js is ' + (typeof Core === 'undefined' ? 'missing' : 'version ' + Core.VERSION) + ' but index.html needs wt-8. Upload index.html, core.js and data.js together, then hard-refresh.');
+if (typeof Core === 'undefined' || Core.VERSION !== 'wt-9' || typeof Data === 'undefined' || !Data.PYRA || !Data.CIRCUIT || !Data.VALID) {
+  window.__wtShow('WordTrio files do not match: core.js is ' + (typeof Core === 'undefined' ? 'missing' : 'version ' + Core.VERSION) + ' but index.html needs wt-9. Upload index.html, core.js and data.js together, then hard-refresh.');
   throw new Error('version mismatch');
 }
 const $ = s => document.querySelector(s);
-const STRICT = false; // true: only accept guesses from Data.LIST. Swap in a full dictionary to use this.
+// Wordle accepts only real words: the built-in list first, then (once, cached) an online dictionary for anything else.
+const KNOWN = new Set([...Data.LIST, ...Data.VALID]);
+const DICT_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+let checking = false;
+async function realWord(w) {
+  if (Core.isKnownWord(w, KNOWN)) return true;
+  const cache = store.get('dict', {});
+  if (w in cache) return cache[w];
+  try {
+    const r = await fetch(DICT_URL + w);
+    if (r.status === 200) { cache[w] = true; store.set('dict', cache); return true; }
+    if (r.status === 404) { cache[w] = false; store.set('dict', cache); return false; }
+  } catch (e) {}
+  return null;   // could not check (offline)
+}
 const today = Core.dateKey(), idx = Core.dayIndex();
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('wt:' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { localStorage.setItem('wt:' + k, JSON.stringify(v)); } };
 const ANSWERS = Core.shuffle(Data.LIST, 20260101);
@@ -101,16 +115,27 @@ function renderWordle() {
   $('#game').innerHTML = h;
   document.querySelectorAll('.key').forEach(b => b.onclick = () => wkey(b.dataset.k));
 }
+async function submitGuess() {
+  if (checking || W.over) return;
+  const g = W.cur;
+  if (g.length < 5) return say('Not enough letters');
+  let ok = Core.isKnownWord(g, KNOWN);
+  if (!ok) { checking = true; say('Checking…'); ok = await realWord(g); checking = false; }
+  if (current !== 'wordle' || W.over || W.cur !== g) return;
+  if (ok === false) return say('Not a real word');
+  if (ok === null) return say('Not in my list, and I cannot check it offline');
+  say('');
+  W.guesses.push(W.cur); W.cur = '';
+  if (W.guesses[W.guesses.length - 1] === answer) { W.over = W.won = true; say('Brilliant'); }
+  else if (W.guesses.length === 6) { W.over = true; say(answer.toUpperCase()); }
+  store.set('wordle', W); renderWordle();
+  if (W.over) finish('wordle', W, W.won);
+}
 function wkey(k) {
-  if (current !== 'wordle' || W.over) return;
+  if (current !== 'wordle' || W.over || checking) return;
   if (k === 'Enter') {
-    if (W.cur.length < 5) return say('Not enough letters');
-    if (!Core.validWordleGuess(W.cur, Data.LIST, STRICT)) return say('Not in word list');
-    W.guesses.push(W.cur); W.cur = '';
-    if (W.guesses[W.guesses.length - 1] === answer) { W.over = W.won = true; say('Brilliant'); }
-    else if (W.guesses.length === 6) { W.over = true; say(answer.toUpperCase()); }
-    store.set('wordle', W); renderWordle();
-    if (W.over) finish('wordle', W, W.won);
+    submitGuess();
+    return;
   } else if (k === 'Backspace') W.cur = W.cur.slice(0, -1);
   else if (/^[a-z]$/i.test(k) && W.cur.length < 5) W.cur += k.toLowerCase();
   store.set('wordle', W); renderWordle();
@@ -165,9 +190,10 @@ const POS = (() => {
 let P;
 const samePyraWords = a => Array.isArray(a) && a.length === Core.PYRA_N && a.slice().sort().join() === pyraP.nodes.slice().sort().join();
 function pyraSave() { store.set('pyra', P); renderPyra(); }
+// A move that would break a marked (orange) link is refused: the words snap back and a message says why.
 function applyMove(from, to) {
   const r = Core.pyraMove(P.arr, P.marks, from, to);
-  if (r.error) say(r.error); else if (r.note) say(r.note);
+  if (r.error) say(r.error);
   if (r.moved) P.arr = r.arr;
   P.sel = null; pyraSave();
 }
@@ -240,7 +266,7 @@ function renderPyra() {
     const n = pyraP.nodes;
     s += '<p class="help">' + Core.EDGES.map(([a, b]) => n[a] + n[b]).join(' · ') + '</p>';
   } else {
-    s += '<p class="help">Fifteen words make a pyramid four layers deep. Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group. Green links stay green while those two words stay together.</p>';
+    s += '<p class="help">Fifteen words make a pyramid four layers deep. Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group, and a marked link is never broken: a move that would break one is refused. Green links stay green while those two words stay together.</p>';
   }
   const G = Core.PYRA_GUESSES;
   s += `<div class="dots">Guesses left: ${'● '.repeat(G - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
@@ -268,23 +294,23 @@ function renderPyra() {
 }
 
 // ---------- Circuit ----------
-// A numbered list of words. Drag a word onto another to swap them (tapping one then another also works).
+// A numbered list of 12 words. Drag a word onto another to swap them (tapping one then another also works).
 // Nothing is coloured until Check loop is pressed.
 let CIRC;
 function renderCircuit() {
-  const p = Core.pick(Data.CIRCUIT, idx);
+  const p = Core.pick(Data.CIRCUIT, idx), MAXC = Core.CIRCUIT_CHECKS;
   const fresh = () => ({ date: today, puzzle: p.id, arr: Core.circuitBoard(p, idx), guesses: 0, feedback: null, over: false, won: false });
   CIRC = day('circuit', fresh());
   // A saved game for a different puzzle (older builds had different loops) is discarded.
   if (CIRC.puzzle !== p.id || !Array.isArray(CIRC.arr) || CIRC.arr.slice().sort().join() !== p.words.slice().sort().join()) { CIRC = fresh(); store.set('circuit', CIRC); }
   if (!Array.isArray(CIRC.feedback)) CIRC.feedback = null;
   const n = CIRC.arr.length, fb = CIRC.feedback;
-  let h = '<p class="help"><b>How to play:</b> drag a word onto another to swap them. Each word must end with the two letters that start the next word, and the last word must link back to the first. Press Check loop to see which links work.</p>';
+  let h = '<p class="help"><b>How to play:</b> drag a word onto another to swap them. Each word must end with the two letters that start the next word, and the last word must link back to the first. Several words can look right, but only a full loop works. Press Check loop to see which links work.</p>';
   h += '<div class="clist" id="clist">' + CIRC.arr.map((w, i) => {
     const state = fb ? (fb[i] ? 'good' : 'wrong') : '';
     return `<div class="ctile ${state}" data-ci="${i}"><span class="grip">⠿</span><b>${i + 1}</b><span class="w">${w}</span><small>${fb ? (fb[i] ? '✓ ' : '✗ ') : ''}${i === n - 1 ? '↩ first' : '↓'}</small></div>`;
   }).join('') + '</div>';
-  h += `<div class="dots">Checks used: ${CIRC.guesses}/5</div>`;
+  h += `<div class="dots">Checks used: ${CIRC.guesses}/${MAXC}</div>`;
   if (!CIRC.over) h += '<div class="actions"><button class="btn" id="cshuffle">Shuffle</button><button class="btn" id="ccheck">Check loop</button></div>';
   else h += '<p class="help">' + (CIRC.won ? 'Loop closed.' : 'Out of checks. One valid loop: ' + p.solution.join(' → ') + ' → ' + p.solution[0]) + '</p>';
   $('#game').innerHTML = h;
@@ -295,7 +321,7 @@ function renderCircuit() {
     const r = Core.circuitCheck(CIRC.arr, p);
     CIRC.feedback = r.links; CIRC.guesses++;
     if (r.solved) { CIRC.over = CIRC.won = true; say('Loop closed'); }
-    else if (CIRC.guesses >= 5) { CIRC.over = true; say('Out of checks'); }
+    else if (CIRC.guesses >= MAXC) { CIRC.over = true; say('Out of checks'); }
     else say(r.correct + ' of ' + n + ' links correct');
     store.set('circuit', CIRC); renderCircuit();
     if (CIRC.over) finish('circuit', CIRC, CIRC.won);
@@ -325,7 +351,7 @@ function bindCircuitDrag(list) {
       g.classList.add('ghost'); g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
       document.body.appendChild(g); d.ghost = g;
       d.el.classList.add('lifted');
-      if (selected !== null) { selected = null; }
+      selected = null;
     }
     d.ghost.style.left = (e.clientX - d.ox) + 'px'; d.ghost.style.top = (e.clientY - d.oy) + 'px';
     const t = tileAt(e.clientX, e.clientY, d.el);
