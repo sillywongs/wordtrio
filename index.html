@@ -41,6 +41,8 @@ svg line{stroke:#777;stroke-width:3}svg line.good{stroke:var(--c)}svg line.bad{s
 .ctile.lifted{opacity:.35}.ctile.over{border-color:#7fb0e8;box-shadow:0 0 0 3px #7fb0e866}
 .ctile.ghost{position:fixed;z-index:50;pointer-events:none;opacity:.95;margin:0;box-shadow:0 8px 18px #000a;transform:scale(1.03)}
 .help{max-width:400px;margin:10px auto;text-align:center;color:#d4d4da;line-height:1.4}
+.help.hint{min-height:2.8em;color:#f5c26b;font-weight:600;margin-bottom:0}
+svg .n.yes rect{stroke:#69c27a;stroke-width:4;fill:#2f4a36}svg .n.no{opacity:.3}
 #msg.fatal{color:#ff8d8d;padding:8px;border:1px solid #a35c63;border-radius:8px}
 dialog{background:#222;color:#fff;border:1px solid #555;border-radius:12px;max-width:340px}
 pre{white-space:pre-wrap}
@@ -60,27 +62,31 @@ pre{white-space:pre-wrap}
   window.__wtShow = text => { window.__wtHandled = true; show(text); };
 })();
 </script>
-<script src="core.js?v=wt-9"></script><script src="data.js?v=wt-9"></script>
+<script src="core.js?v=wt-10"></script><script src="data.js?v=wt-10"></script>
 <script>
-if (typeof Core === 'undefined' || Core.VERSION !== 'wt-9' || typeof Data === 'undefined' || !Data.PYRA || !Data.CIRCUIT || !Data.VALID) {
-  window.__wtShow('WordTrio files do not match: core.js is ' + (typeof Core === 'undefined' ? 'missing' : 'version ' + Core.VERSION) + ' but index.html needs wt-9. Upload index.html, core.js and data.js together, then hard-refresh.');
+if (typeof Core === 'undefined' || Core.VERSION !== 'wt-10' || typeof Data === 'undefined' || !Data.PYRA || !Data.CIRCUIT || !Data.VALID) {
+  window.__wtShow('WordTrio files do not match: core.js is ' + (typeof Core === 'undefined' ? 'missing' : 'version ' + Core.VERSION) + ' but index.html needs wt-10. Upload index.html, core.js and data.js together, then hard-refresh.');
   throw new Error('version mismatch');
 }
 const $ = s => document.querySelector(s);
 // Wordle accepts only real words: the built-in list first, then (once, cached) an online dictionary for anything else.
+// The online check gives up after 3.5 seconds, so a slow or blocked connection can never freeze the game.
 const KNOWN = new Set([...Data.LIST, ...Data.VALID]);
 const DICT_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
-let checking = false;
+let checkId = 0;   // each Enter press gets a number, so an old slow check can never block or overwrite a newer one
 async function realWord(w) {
   if (Core.isKnownWord(w, KNOWN)) return true;
   const cache = store.get('dict', {});
   if (w in cache) return cache[w];
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = setTimeout(() => { if (ctl) ctl.abort(); }, 3500);
   try {
-    const r = await fetch(DICT_URL + w);
+    const r = await Promise.race([fetch(DICT_URL + w, ctl ? { signal: ctl.signal } : {}), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 3600))]);
     if (r.status === 200) { cache[w] = true; store.set('dict', cache); return true; }
     if (r.status === 404) { cache[w] = false; store.set('dict', cache); return false; }
-  } catch (e) {}
-  return null;   // could not check (offline)
+  } catch (e) { /* offline, blocked or too slow */ }
+  finally { clearTimeout(timer); }
+  return null;   // could not check
 }
 const today = Core.dateKey(), idx = Core.dayIndex();
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('wt:' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { localStorage.setItem('wt:' + k, JSON.stringify(v)); } };
@@ -88,7 +94,7 @@ const ANSWERS = Core.shuffle(Data.LIST, 20260101);
 const answer = Core.pick(ANSWERS, idx);
 const connP = Core.pick(Data.CONNECTIONS, idx), pyraP = Core.pick(Data.PYRA, idx);
 let current = 'wordle', shareText = '';
-const say = t => { $('#msg').textContent = t; if (t) setTimeout(() => { if ($('#msg').textContent === t) $('#msg').textContent = ''; }, 2200); };
+const say = (t, ms = 2200) => { $('#msg').textContent = t; if (t) setTimeout(() => { if ($('#msg').textContent === t) $('#msg').textContent = ''; }, ms); };
 function day(game, init) { const s = store.get(game, null); return s && s.date === today ? s : Object.assign({ date: today }, init); }
 function finish(game, st, won) {
   store.set(game + ':stats', Core.updateStats(store.get(game + ':stats', null), won, today));
@@ -116,14 +122,17 @@ function renderWordle() {
   document.querySelectorAll('.key').forEach(b => b.onclick = () => wkey(b.dataset.k));
 }
 async function submitGuess() {
-  if (checking || W.over) return;
-  const g = W.cur;
+  if (W.over) return;
+  const g = W.cur, id = ++checkId;
   if (g.length < 5) return say('Not enough letters');
   let ok = Core.isKnownWord(g, KNOWN);
-  if (!ok) { checking = true; say('Checking…'); ok = await realWord(g); checking = false; }
-  if (current !== 'wordle' || W.over || W.cur !== g) return;
+  if (!ok) {
+    say('Checking…', 4000);
+    try { ok = await realWord(g); } catch (e) { ok = null; }
+  }
+  if (id !== checkId || current !== 'wordle' || W.over || W.cur !== g) return;   // the player moved on
   if (ok === false) return say('Not a real word');
-  if (ok === null) return say('Not in my list, and I cannot check it offline');
+  if (ok === null) return say('Not in my word list, and I could not check it online');
   say('');
   W.guesses.push(W.cur); W.cur = '';
   if (W.guesses[W.guesses.length - 1] === answer) { W.over = W.won = true; say('Brilliant'); }
@@ -132,7 +141,7 @@ async function submitGuess() {
   if (W.over) finish('wordle', W, W.won);
 }
 function wkey(k) {
-  if (current !== 'wordle' || W.over || checking) return;
+  if (current !== 'wordle' || W.over) return;
   if (k === 'Enter') {
     submitGuess();
     return;
@@ -190,10 +199,24 @@ const POS = (() => {
 let P;
 const samePyraWords = a => Array.isArray(a) && a.length === Core.PYRA_N && a.slice().sort().join() === pyraP.nodes.slice().sort().join();
 function pyraSave() { store.set('pyra', P); renderPyra(); }
-// A move that would break a marked (orange) link is refused: the words snap back and a message says why.
+// Light up where the picked word (and its locked group) may be dropped; dim every spot where the move is not allowed.
+function showTargets(svg, from) {
+  const ok = Core.pyraTargets(P.arr, P.marks, from), grp = Core.groupOf(P.arr, P.marks, from);
+  svg.querySelectorAll('.n').forEach(el => {
+    const i = +el.dataset.i;
+    el.classList.remove('yes', 'no');
+    if (grp.includes(i)) return;
+    el.classList.add(ok[i] ? 'yes' : 'no');
+  });
+  const hint = $('#pyraHint');
+  if (hint) hint.textContent = grp.length > 1
+    ? `Locked group: ${grp.length} words across ${Core.groupSpan(P.arr, P.marks, from)} layers. It can only go on the green spots.`
+    : 'Green spots are where this word can go. Dimmed words belong to locked groups.';
+}
+// A move that would break a locked (orange) link is refused: the words snap back and a message says why.
 function applyMove(from, to) {
   const r = Core.pyraMove(P.arr, P.marks, from, to);
-  if (r.error) say(r.error);
+  if (r.error) say(r.error, 5000);
   if (r.moved) P.arr = r.arr;
   P.sel = null; pyraSave();
 }
@@ -219,6 +242,7 @@ function setupPyraInput(svg) {
     if (!drag) return;
     const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
     if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+    if (!drag.moved) showTargets(svg, drag.i);
     drag.moved = true;
     const k = PW / rect().width;
     drag.group.forEach(g => {
@@ -266,7 +290,8 @@ function renderPyra() {
     const n = pyraP.nodes;
     s += '<p class="help">' + Core.EDGES.map(([a, b]) => n[a] + n[b]).join(' · ') + '</p>';
   } else {
-    s += '<p class="help">Fifteen words make a pyramid four layers deep. Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words move together as a group, and a marked link is never broken: a move that would break one is refused. Green links stay green while those two words stay together.</p>';
+    s += '<p class="help hint" id="pyraHint"></p>';
+    s += '<p class="help">Fifteen words make a pyramid four layers deep. Read each line downward: the upper word plus the lower word makes one word, like FIRE + WORK = FIREWORK. Drag a word onto another to swap, or tap one then the other. Tap a line to mark it orange. Marked words are locked together as a group, and a locked link is never broken: pick up a group and the spots where it fits light up green. Green links stay green while those two words stay together.</p>';
   }
   const G = Core.PYRA_GUESSES;
   s += `<div class="dots">Guesses left: ${'● '.repeat(G - P.history.length)}${'○ '.repeat(P.history.length)}</div>`;
@@ -274,7 +299,7 @@ function renderPyra() {
   $('#game').innerHTML = s;
   if (P.over) return;
   const svg = $('#game').querySelector('svg');
-  if (svg) setupPyraInput(svg);
+  if (svg) { setupPyraInput(svg); if (P.sel !== null) showTargets(svg, P.sel); }
   document.querySelectorAll('svg line.hit').forEach(l => l.onclick = () => {
     const [a, b] = Core.EDGES[+l.dataset.e], key = Core.pairKey(P.arr[a], P.arr[b]);
     P.marks = P.marks.includes(key) ? P.marks.filter(x => x !== key) : [...P.marks, key];

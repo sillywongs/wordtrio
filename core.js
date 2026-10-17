@@ -4,7 +4,7 @@
   else root.Core = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   // index.html checks this so a mix of old and new files is reported instead of leaving a blank board.
-  const VERSION = 'wt-9';
+  const VERSION = 'wt-10';
   const EPOCH = Date.UTC(2026, 0, 1);
   // Pyramid: 15 words in a full binary tree, four layers deep (1 + 2 + 4 + 8). Node i has children 2i+1 and 2i+2.
   const PYRA_N = 15, PYRA_GUESSES = 6;
@@ -145,6 +145,7 @@
   }
   const childrenOf = i => [2 * i + 1, 2 * i + 2].filter(x => x < PYRA_N);
   const parentOf = i => (i > 0 ? (i - 1) >> 1 : -1);
+  const layerOf = i => Math.floor(Math.log2(i + 1));
   // Marked links are locked: no move may break one. A marked link is broken when its two words are no longer
   // joined by a downward line (upper word, lower word).
   const markedKeys = (arr, marks) => EDGES.filter((_, e) => markedEdges(arr, marks)[e]).map(([a, b]) => pairKey(arr[a], arr[b]));
@@ -154,6 +155,20 @@
   };
   function permutations(a) {
     return a.length < 2 ? [a] : a.flatMap((x, i) => permutations(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x, ...p]));
+  }
+  // How many layers a locked group spans (a chain of 3 linked words spans 3 layers).
+  function groupSpan(arr, marks, i) {
+    const me = markedEdges(arr, marks), depth = new Map([[i, 0]]), queue = [i];
+    for (let q = 0; q < queue.length; q++) {
+      const u = queue[q];
+      EDGES.forEach(([a, b], e) => {
+        if (!me[e]) return;
+        if (a === u && !depth.has(b)) { depth.set(b, depth.get(u) + 1); queue.push(b); }
+        else if (b === u && !depth.has(a)) { depth.set(a, depth.get(u) - 1); queue.push(a); }
+      });
+    }
+    const ds = [...depth.values()];
+    return Math.max(...ds) - Math.min(...ds) + 1;
   }
   // Move the word at `from` onto position `to`. Returns { arr, moved } or { arr, moved: false, error }.
   // A lone word swaps with the word it lands on. A marked group moves as one piece, to any layer, and only to a
@@ -186,7 +201,7 @@
         f.set(v, p); used.add(p); dfs(k + 1, dist + Math.abs(p - v)); used.delete(p); f.delete(v);
       });
     })(1, 0);
-    if (!places.length) return { arr, moved: false, error: 'That group cannot sit there without breaking its links.' };
+    if (!places.length) return { arr, moved: false, error: 'That locked group (' + G.length + ' words, ' + groupSpan(arr, marks, from) + ' layers) does not fit there.' };
     places.sort((x, y) => x.dist - y.dist);
     const fillings = p => {
       const dest = G.map(g => p.f.get(g));
@@ -208,7 +223,11 @@
       return res;
     };
     for (const p of places) for (const out of fillings(p)) if (linksIntact(keys, out)) return { arr: out, moved: true };
-    return { arr, moved: false, error: 'That would break another marked link. Unmark it first.' };
+    return { arr, moved: false, error: 'That would break another locked group. Unmark it first.' };
+  }
+  // For the word at `from`: which positions it (and its locked group) may be dropped on. Used to light up legal spots.
+  function pyraTargets(arr, marks, from) {
+    return arr.map((_, to) => to !== from && pyraMove(arr, marks, from, to).moved);
   }
   function swap(arr, i, j) { const a = arr.slice(); [a[i], a[j]] = [a[j], a[i]]; return a; }
 
@@ -275,7 +294,7 @@
       history.map(h => h.map(b => b ? '🟩' : '🟥').join('')).join('\n');
   }
 
-  return { VERSION, EDGES, PYRA_N, PYRA_GUESSES, CIRCUIT_CHECKS, childrenOf, parentOf, circuitCycleCount, circuitBranching, isKnownWord, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
+  return { VERSION, EDGES, PYRA_N, PYRA_GUESSES, CIRCUIT_CHECKS, childrenOf, parentOf, layerOf, groupSpan, pyraTargets, circuitCycleCount, circuitBranching, isKnownWord, dateKey, dayIndex, prevKey, mulberry32, shuffle, pick, wordleEval, keyboardState,
     validWordleGuess, circuitLinks, circuitSolved, circuitBoard, circuitCheck, connectionsCheck, connectionsBoard, validateConnections, pyraLinks, pyraSolved,
     pyraScramble, pyraRecord, pyraStatus, validSet, pairKey, markedEdges, groupOf, pyraMove, swap, updateStats, shareWordle, shareConnections, sharePyra };
 });

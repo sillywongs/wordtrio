@@ -1,0 +1,11 @@
+WordTrio fix: Word no longer freezes on a made-up word, and Pyramid shows where locked groups can go
+
+Replace these in your repo (all three must be the same version, wt-10):
+  index.html   (new)
+  core.js      (new)
+  data.js      (keep your current one; it is unchanged, but the page now loads it as data.js?v=wt-10 so it is fetched fresh)
+
+Optional: test-fixes.js and browser-test-fixes.py. Run  node test-fixes.js  next to core.js and data.js.
+If you still run the older test.js, its first test checks for version wt-9: change 'wt-9' to 'wt-10' in that line.
+
+After uploading, hard-refresh the page (or clear the site's data once).
